@@ -105,13 +105,18 @@ export function CheeseGame() {
   };
 
   return (
-    <div className="overflow-hidden rounded-[28px] bg-white shadow-xl shadow-brand/15 ring-1 ring-black/5">
-      {/* رأس اللعبة: الاسم وزر الصوت */}
-      <div className="mt-4 flex items-center justify-between px-5">
-        <div className="flex items-baseline gap-2">
-          <p className="text-sm font-black text-brand">جبنة السماء 🧀</p>
-          <p className="text-[11px] font-bold text-brand/50">
-            +10 قبض · −5 ضيعة
+    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-white shadow-xl shadow-brand/15 sm:rounded-[28px] sm:ring-1 sm:ring-black/5">
+      {/* رأس اللعبة: الاسم + براند مصغر + زر الصوت */}
+      <div className="flex items-center justify-between px-5 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <div className="leading-tight">
+          <div className="flex items-baseline gap-2">
+            <p className="text-sm font-black text-brand">جبنة السماء 🧀</p>
+            <p className="text-[11px] font-bold text-brand/50">
+              +10 قبض · −5 ضيعة
+            </p>
+          </div>
+          <p className="text-[9px] font-bold tracking-wide text-brand/40">
+            من هيما فارم 🧡
           </p>
         </div>
         <button
@@ -134,8 +139,8 @@ export function CheeseGame() {
         </button>
       </div>
 
-      {/* المسرح */}
-      <div className="relative mx-4 mb-4 mt-2 overflow-hidden rounded-3xl bg-gradient-to-b from-brand to-brand-deep">
+      {/* المسرح — بياخد الطول كله على الموبايل */}
+      <div className="relative mx-0 min-h-0 flex-1 overflow-hidden bg-gradient-to-b from-brand to-brand-deep sm:mx-4 sm:mb-4 sm:rounded-3xl">
         <CheeseCourt
           running={phase === "running"}
           roundSeconds={roundSeconds}
@@ -189,9 +194,9 @@ export function CheeseGame() {
 
         {/* النتيجة النهائية */}
         {phase === "final" && finalVerdict ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center overflow-y-auto bg-brand/85 p-6 py-8 text-center backdrop-blur-sm">
+          <div className="absolute inset-0 flex flex-col overflow-y-auto bg-brand/85 p-6 py-8 text-center backdrop-blur-sm">
             {leadStatus === "done" ? (
-              <div className="anim-rise w-full max-w-sm">
+              <div className="anim-rise mx-auto my-auto w-full max-w-sm">
                 <p className="mb-2 text-4xl">🎉</p>
                 <p className="mb-1 text-2xl font-black text-gold">
                   تم التسجيل يا {leadName}!
@@ -211,7 +216,7 @@ export function CheeseGame() {
                 </p>
               </div>
             ) : (
-              <div className="anim-rise w-full max-w-sm">
+              <div className="anim-rise mx-auto my-auto w-full max-w-sm">
                 <p className="mb-1 text-sm font-bold text-gold-soft">
                   نتيجتك النهائية
                 </p>
