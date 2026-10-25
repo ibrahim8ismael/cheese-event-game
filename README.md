@@ -1,36 +1,36 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🧀 قطّع الجبنة بالنص — لعبة هيما فارم
 
-## Getting Started
+لعبة ترفيه عربية بالكامل (RTL) لهوية **هيما فارم** [himasfarm.com](https://himasfarm.com) —
+جبنة وسكينة بتتحرك لوحدها.. واللاعب لازم يقطّعها نصين بالظبط (علامة 50%).
 
-First, run the development server:
+## الميكانيك
+- **٣ ضربات** في الجولة، والموس أسرع في كل ضربة
+- بعد كل ضربة: **ثبّت النتيجة** أو **جرب تاني ⚡** — لو كملت، *النتيجة السابقة تضيع*
+- الدرجة = مقياس البعد عن مركز الجبنة (50%)، مع تصنيفات فكاهية بالعربي
 
+## التقنيات
+| الطبقة | الأداة |
+| --- | --- |
+| الإطار | Next.js 16 (App Router, Turbopack) + React 19 |
+| لغة | TypeScript |
+| التنسيق | Tailwind CSS 4 + خط Cairo |
+| المسرح | SVG خالص + refs/RAF (بدون مكتبات حركة) |
+| الصوت | Web Audio API (بدون ملفات) |
+| الاحتفال | canvas-confetti |
+
+## التشغيل
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev      # http://localhost:3000
+npm run build    # فحص إنتاج
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## بنية الشغل
+- `lib/game.ts` — محرك نقي: السرعات، النقاط، الحكم (بدون React)
+- `lib/sound.ts` — مؤثرات Web Audio
+- `components/game/CheeseBoard.tsx` — مسرح SVG + واجهة إمررية (BoardApi)
+- `components/game/CheeseGame.tsx` — آلة الحالات والواجهات
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## خطوة قادمة (TODO)
+- الباك‌إند: مكان جاهز في شاشة النتيجة النهائية (`TODO(backend)`) لإرسال
+  (الاسم، الموبايل بصيغة مصرية +20، الدرجة) إلى سيرفر/جوجل شيت لاحقًا
