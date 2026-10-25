@@ -2,7 +2,7 @@ import CheeseGame from "@/components/game/CheeseGame";
 
 export default function Home() {
   return (
-    <main className="flex h-dvh min-h-dvh flex-col overflow-hidden bg-cream sm:h-auto sm:min-h-dvh sm:overflow-visible">
+    <main className="flex h-dvh min-h-dvh flex-col overflow-hidden bg-cream">
       <header className="hidden bg-brand text-cream sm:block">
         <div className="mx-auto flex w-full max-w-xl items-center justify-between px-5 py-4">
           <div className="flex items-center gap-2">
@@ -26,7 +26,7 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="mx-auto flex min-h-0 w-full max-w-xl flex-1 px-0 py-0 sm:px-4 sm:py-6">
+      <section className="mx-auto flex min-h-0 w-full max-w-xl flex-1 flex-col px-0 py-0 sm:px-4 sm:py-6">
         <CheeseGame />
       </section>
 

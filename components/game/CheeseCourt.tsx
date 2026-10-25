@@ -116,7 +116,6 @@ export function CheeseCourt({
     Array.from({ length: FLOAT_MAX }, (_, i) => i),
   );
   const runningRef = useRef(running);
-  runningRef.current = running;
 
   /* ارتفاع المسرح الحقيقي — الـ viewBox بيتحرك مع نسبة شاشة الموبايل */
   const [svgH, setSvgH] = useState(DEFAULT_H);
@@ -124,16 +123,16 @@ export function CheeseCourt({
   const geoNow = () => geoFor(vhRef.current);
 
   /* ─── الالتقاط والضياع ─── */
-  const doCatch = (x: number) => {
+  const doCatch = (x: number, now: number) => {
     scoreRef.current += CATCH_POINTS;
     streakRef.current += 1;
-    bounceStartRef.current = performance.now();
+    bounceStartRef.current = now;
     sfx.pop(Math.min(streakRef.current - 1, 8));
     onCatch(scoreRef.current);
-    spawnFloat(x, geoNow().catchY - 58, `+${CATCH_POINTS}`, "#8ef0b2");
+    spawnFloat(x, geoNow().catchY - 58, `+${CATCH_POINTS}`, "#8ef0b2", now);
   };
 
-  const doMiss = (x: number) => {
+  const doMiss = (x: number, now: number) => {
     scoreRef.current = Math.max(
       SCORE_FLOOR,
       scoreRef.current - MISS_PENALTY,
@@ -141,10 +140,22 @@ export function CheeseCourt({
     streakRef.current = 0;
     sfx.fail();
     onMiss(scoreRef.current);
-    spawnFloat(x, geoNow().floorY - 30, `\u2212${MISS_PENALTY}`, "#ff9d9d");
+    spawnFloat(
+      x,
+      geoNow().floorY - 30,
+      `\u2212${MISS_PENALTY}`,
+      "#ff9d9d",
+      now,
+    );
   };
 
-  const spawnFloat = (x: number, y: number, text: string, fill: string) => {
+  const spawnFloat = (
+    x: number,
+    y: number,
+    text: string,
+    fill: string,
+    bornAt: number,
+  ) => {
     const slot = freeFloatSlotsRef.current.pop();
     if (slot === undefined) return;
     const f = floatTextRefs.current[slot];
@@ -156,7 +167,7 @@ export function CheeseCourt({
       slot,
       x,
       y,
-      bornAt: performance.now(),
+      bornAt,
       text,
       fill,
     });
@@ -205,6 +216,7 @@ export function CheeseCourt({
 
   /* ─── حلقة اللعبة ─── */
   useEffect(() => {
+    runningRef.current = running;
     if (!running) {
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
@@ -321,7 +333,7 @@ export function CheeseCourt({
         ) {
           e.active = false;
           e.settled = true;
-          doCatch(swayX);
+          doCatch(swayX, now);
           if (g) g.setAttribute("visibility", "hidden");
           freeSlotsRef.current.push(e.slot);
           continue;
@@ -331,7 +343,7 @@ export function CheeseCourt({
         if (e.y > G.floorY) {
           e.active = false;
           if (!e.settled) e.settled = true;
-          doMiss(swayX);
+          doMiss(swayX, now);
           if (g) g.setAttribute("visibility", "hidden");
           freeSlotsRef.current.push(e.slot);
         }
@@ -386,6 +398,7 @@ export function CheeseCourt({
     rafRef.current = requestAnimationFrame(loop);
 
     return () => {
+      runningRef.current = false;
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;

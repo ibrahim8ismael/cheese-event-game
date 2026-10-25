@@ -105,7 +105,7 @@ export function CheeseGame() {
   };
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-white shadow-xl shadow-brand/15 sm:rounded-[28px] sm:ring-1 sm:ring-black/5">
+    <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-white shadow-xl shadow-brand/15 sm:rounded-[28px] sm:ring-1 sm:ring-black/5">
       {/* رأس اللعبة: الاسم + براند مصغر + زر الصوت */}
       <div className="flex items-center justify-between px-5 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="leading-tight">
