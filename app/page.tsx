@@ -1,3 +1,5 @@
+import CheeseGame from "@/components/game/CheeseGame";
+
 export default function Home() {
   return (
     <main className="flex min-h-dvh flex-col bg-cream">
@@ -25,17 +27,7 @@ export default function Home() {
       </header>
 
       <section className="mx-auto w-full max-w-xl flex-1 px-4 py-6">
-        <div className="flex h-full items-center justify-center rounded-[28px] border-2 border-dashed border-brand/20 bg-white/70 p-10 text-center">
-          <div>
-            <p className="mb-2 text-4xl">🧀</p>
-            <p className="text-lg font-bold text-brand/60">
-              المكان المخصص للشغلة نفسها..
-            </p>
-            <p className="text-sm font-semibold text-brand/40">
-              الصبر يا شيف، الجبنة بتجهز
-            </p>
-          </div>
-        </div>
+        <CheeseGame />
       </section>
 
       <footer className="px-5 py-5 text-center text-xs font-semibold text-brand/70">
