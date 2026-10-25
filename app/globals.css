@@ -85,3 +85,25 @@ body {
 .anim-pop {
   animation: pop 0.4s cubic-bezier(0.3, 1.5, 0.6, 1) both;
 }
+
+/* ─── غيوم السماء بتحرك ببطء ─── */
+@keyframes cloud-drift {
+  from {
+    transform: translateX(-26px);
+  }
+  to {
+    transform: translateX(26px);
+  }
+}
+.cloud-a {
+  animation: cloud-drift 16s ease-in-out infinite alternate;
+}
+.cloud-slower {
+  animation: cloud-drift 26s ease-in-out infinite alternate;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cloud-a,
+  .cloud-slower {
+    animation: none;
+  }
+}
