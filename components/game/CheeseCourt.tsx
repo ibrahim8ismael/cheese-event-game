@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { sfx } from "@/lib/sound";
 import {
   CATCH_POINTS,
@@ -11,14 +11,31 @@ import {
   spawnIntervalAt,
 } from "@/lib/game";
 
-/* ─── هندسة المسرح (viewBox 0..1000 × 0..700) ─── */
+/* ─── هندسة المسرح: العرض ثابت (0..1000) والطول بيتغير مع الشاشة ─── */
 const STAGE_W = 1000;
-const CATCH_Y = 570; // خط التقاط البقر الرم البقر
+const DEFAULT_H = 700;
+const MIN_H = 200;
 const CATCH_HALF = 105; // نصف سعة السلة للقبض
-const BASKET_Y = 596;
-const FLOOR_Y = 690; // تفشل الجبنة بعد السلة بس بتيجي الأرض
 const ENT_MAX = 12;
 const FLOAT_MAX = 6;
+
+interface CourtGeo {
+  H: number;
+  catchY: number;
+  basketY: number;
+  floorY: number;
+}
+
+/** هندسة عمودية ديناميكية: السلة/خط الالتقاط/الأرض بترتفع للأسفل مهما طال الشاشة */
+function geoFor(H: number): CourtGeo {
+  const clamped = Math.max(MIN_H, Math.round(H));
+  return {
+    H: clamped,
+    catchY: clamped - 130,
+    basketY: clamped - 104,
+    floorY: clamped - 10,
+  };
+}
 
 interface Ent {
   active: boolean;
@@ -99,19 +116,23 @@ export function CheeseCourt({
     Array.from({ length: FLOAT_MAX }, (_, i) => i),
   );
   const runningRef = useRef(running);
-  runningRef.current = running;
+
+  /* ارتفاع المسرح الحقيقي — الـ viewBox بيتحرك مع نسبة شاشة الموبايل */
+  const [svgH, setSvgH] = useState(DEFAULT_H);
+  const vhRef = useRef(DEFAULT_H);
+  const geoNow = () => geoFor(vhRef.current);
 
   /* ─── الالتقاط والضياع ─── */
-  const doCatch = (x: number) => {
+  const doCatch = (x: number, now: number) => {
     scoreRef.current += CATCH_POINTS;
     streakRef.current += 1;
-    bounceStartRef.current = performance.now();
+    bounceStartRef.current = now;
     sfx.pop(Math.min(streakRef.current - 1, 8));
     onCatch(scoreRef.current);
-    spawnFloat(x, 512, `+${CATCH_POINTS}`, "#8ef0b2");
+    spawnFloat(x, geoNow().catchY - 58, `+${CATCH_POINTS}`, "#8ef0b2", now);
   };
 
-  const doMiss = (x: number) => {
+  const doMiss = (x: number, now: number) => {
     scoreRef.current = Math.max(
       SCORE_FLOOR,
       scoreRef.current - MISS_PENALTY,
@@ -119,10 +140,22 @@ export function CheeseCourt({
     streakRef.current = 0;
     sfx.fail();
     onMiss(scoreRef.current);
-    spawnFloat(x, 660, `\u2212${MISS_PENALTY}`, "#ff9d9d");
+    spawnFloat(
+      x,
+      geoNow().floorY - 30,
+      `\u2212${MISS_PENALTY}`,
+      "#ff9d9d",
+      now,
+    );
   };
 
-  const spawnFloat = (x: number, y: number, text: string, fill: string) => {
+  const spawnFloat = (
+    x: number,
+    y: number,
+    text: string,
+    fill: string,
+    bornAt: number,
+  ) => {
     const slot = freeFloatSlotsRef.current.pop();
     if (slot === undefined) return;
     const f = floatTextRefs.current[slot];
@@ -134,7 +167,7 @@ export function CheeseCourt({
       slot,
       x,
       y,
-      bornAt: performance.now(),
+      bornAt,
       text,
       fill,
     });
@@ -144,12 +177,13 @@ export function CheeseCourt({
     const slot = freeSlotsRef.current.pop();
     if (slot === undefined) return;
     const power = difficultyAt(elapsedRef.current, roundSeconds);
+    const speedK = geoNow().H / DEFAULT_H; // تطبيع السرعة مع طول الشاشة (الإحساس ثابت)
     entsRef.current.push({
       active: true,
       slot,
       x: 90 + Math.random() * 820,
       y: -50,
-      vy: fallSpeedAt(power) * (0.9 + Math.random() * 0.25),
+      vy: fallSpeedAt(power) * (0.9 + Math.random() * 0.25) * speedK,
       rot: Math.random() * 360,
       vr: Math.random() * 140 - 70,
       swayAmp: 18 + Math.random() * 26,
@@ -160,8 +194,29 @@ export function CheeseCourt({
     });
   };
 
+  /* ─── قياس المسرح: الـ viewBox بيمشي على نسبة الشاشة (لعبة بتملى الطول) ─── */
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const measure = () => {
+      const rect = el.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      const nextH = Math.max(
+        MIN_H,
+        Math.round((rect.height / rect.width) * STAGE_W),
+      );
+      vhRef.current = nextH;
+      setSvgH(nextH);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   /* ─── حلقة اللعبة ─── */
   useEffect(() => {
+    runningRef.current = running;
     if (!running) {
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
@@ -173,7 +228,7 @@ export function CheeseCourt({
     /* تهيئة الجولة */
     elapsedRef.current = 0;
     lastRef.current = performance.now();
-    spawnAtRef.current = 0.35;
+    spawnAtRef.current = 0.15;
     endedRef.current = false;
     scoreRef.current = 0;
     streakRef.current = 0;
@@ -217,6 +272,7 @@ export function CheeseCourt({
       elapsedRef.current += dt;
 
       const power = difficultyAt(elapsedRef.current, roundSeconds);
+      const G = geoNow(); // هندسة اللقطة الحالية (بتتقري كل فريم)
 
       /* توليد الجبنة بمنحنى يقل فترة مع الوقت */
       spawnAtRef.current -= dt;
@@ -244,7 +300,7 @@ export function CheeseCourt({
         bounceAge < 170 ? 1 + 0.17 * (1 - bounceAge / 170) : 1;
       basketRef.current?.setAttribute(
         "transform",
-        `translate(${bxRef.current} ${BASKET_Y}) scale(${scale})`,
+        `translate(${bxRef.current} ${G.basketY}) scale(${scale})`,
       );
 
       /* تحديث الجبنة */
@@ -271,23 +327,23 @@ export function CheeseCourt({
         /* خط الالتقاط */
         if (
           !e.settled &&
-          e.y >= CATCH_Y - 10 &&
-          e.y <= CATCH_Y + 56 &&
+          e.y >= G.catchY - 10 &&
+          e.y <= G.catchY + 56 &&
           Math.abs(swayX - bxRef.current) <= CATCH_HALF
         ) {
           e.active = false;
           e.settled = true;
-          doCatch(swayX);
+          doCatch(swayX, now);
           if (g) g.setAttribute("visibility", "hidden");
           freeSlotsRef.current.push(e.slot);
           continue;
         }
         /* عدت السلة → هتعدي على الأرض (اطمن يا حبيبي) */
-        if (e.y > CATCH_Y + 56) e.settled = true;
-        if (e.y > FLOOR_Y) {
+        if (e.y > G.catchY + 56) e.settled = true;
+        if (e.y > G.floorY) {
           e.active = false;
           if (!e.settled) e.settled = true;
-          doMiss(swayX);
+          doMiss(swayX, now);
           if (g) g.setAttribute("visibility", "hidden");
           freeSlotsRef.current.push(e.slot);
         }
@@ -342,6 +398,7 @@ export function CheeseCourt({
     rafRef.current = requestAnimationFrame(loop);
 
     return () => {
+      runningRef.current = false;
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
@@ -370,25 +427,28 @@ export function CheeseCourt({
     followPointer(e.clientX);
   };
 
+  /* هندسة العرض الحالية (للـ JSX الثابت) */
+  const G = geoFor(svgH);
+
   return (
     <div
       ref={stageRef}
-      className="stage relative w-full cursor-grab"
+      className="stage relative h-full w-full cursor-grab"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
     >
       <svg
-        viewBox="0 0 1000 700"
-        className="block h-auto w-full"
+        viewBox={`0 0 ${STAGE_W} ${G.H}`}
+        className="absolute inset-0 h-full w-full"
         aria-hidden="true"
       >
         {/* غيوم خفيفة بتمشي براحتها */}
-        <g ref={cloudARef} className="cloud-a" opacity={0.14} transform="translate(180 120)">
+        <g ref={cloudARef} className="cloud-a" opacity={0.14} transform={`translate(180 ${Math.round(G.H * 0.17)})`}>
           <ellipse cx={0} cy={0} rx={95} ry={34} fill="#fbf7f0" />
           <ellipse cx={70} cy={10} rx={70} ry={24} fill="#fbf7f0" />
           <ellipse cx={-60} cy={14} rx={60} ry={20} fill="#fbf7f0" />
         </g>
-        <g ref={cloudBRef} className="cloud-slower" opacity={0.1} transform="translate(700 210)">
+        <g ref={cloudBRef} className="cloud-slower" opacity={0.1} transform={`translate(700 ${Math.round(G.H * 0.3)})`}>
           <ellipse cx={0} cy={0} rx={120} ry={38} fill="#fbf7f0" />
           <ellipse cx={90} cy={12} rx={70} ry={22} fill="#fbf7f0" />
           <ellipse cx={-80} cy={16} rx={65} ry={20} fill="#fbf7f0" />
@@ -428,7 +488,7 @@ export function CheeseCourt({
         ))}
 
         {/* السلة */}
-        <g ref={basketRef} transform={`translate(${STAGE_W / 2} ${BASKET_Y})`}>
+        <g ref={basketRef} transform={`translate(${STAGE_W / 2} ${G.basketY})`}>
           <path
             d="M -120,-14 H 120 L 94,78 Q 0,96 -94,78 Z"
             fill="#c98a3b"
@@ -459,8 +519,8 @@ export function CheeseCourt({
         {/* الأرضية */}
         <rect
           x={0}
-          y={696}
-          width={1000}
+          y={G.H - 4}
+          width={STAGE_W}
           height={10}
           fill="#123b2a"
           opacity={0.55}

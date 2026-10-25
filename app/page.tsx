@@ -2,8 +2,8 @@ import CheeseGame from "@/components/game/CheeseGame";
 
 export default function Home() {
   return (
-    <main className="flex min-h-dvh flex-col bg-cream">
-      <header className="bg-brand text-cream">
+    <main className="flex h-dvh min-h-dvh flex-col overflow-hidden bg-cream">
+      <header className="hidden bg-brand text-cream sm:block">
         <div className="mx-auto flex w-full max-w-xl items-center justify-between px-5 py-4">
           <div className="flex items-center gap-2">
             <svg viewBox="0 0 64 64" className="h-8 w-8" aria-hidden="true">
@@ -26,11 +26,11 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="mx-auto w-full max-w-xl flex-1 px-4 py-6">
+      <section className="mx-auto flex min-h-0 w-full max-w-xl flex-1 flex-col px-0 py-0 sm:px-4 sm:py-6">
         <CheeseGame />
       </section>
 
-      <footer className="px-5 py-5 text-center text-xs font-semibold text-brand/70">
+      <footer className="hidden px-5 py-5 text-center text-xs font-semibold text-brand/70 sm:block">
         <p className="mb-1">من هيما فارم — منتجات طبيعية من قلب الطبيعة</p>
         <a
           href="https://himasfarm.com"
