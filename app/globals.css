@@ -25,22 +25,6 @@ body {
   overscroll-behavior: contain;
 }
 
-/* ─── حركة نصفي الجبنة مفرّقين ─── */
-.cheese-half {
-  transition: transform 0.55s cubic-bezier(0.3, 1.6, 0.5, 1);
-}
-.cheese-half.no-anim {
-  transition: none;
-}
-
-/* ─── حركة الموس ─── */
-.knife {
-  transition: opacity 0.18s ease;
-}
-.knife.no-anim {
-  transition: none;
-}
-
 /* ─── اهتزاز خفيف على التذكيرات ─── */
 @keyframes rise {
   from {
