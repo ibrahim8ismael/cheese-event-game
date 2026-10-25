@@ -101,6 +101,24 @@ class Sfx {
     });
   }
 
+  /** طقطقة التقاط: بونك قصير لطيف مع نغمة عالية بت تغمر القبض */
+  pop(semitone = 0): void {
+    this.play((ctx, t0) => {
+      const dur = 0.16;
+      const base = 420 * Math.pow(2, semitone / 12);
+      const osc = ctx.createOscillator();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(base, t0);
+      osc.frequency.exponentialRampToValueAtTime(base * 1.5, t0 + dur);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.22, t0);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+      osc.connect(g).connect(ctx.destination);
+      osc.start();
+      osc.stop(t0 + dur);
+    });
+  }
+
   /** فراحة: نغمتين علوين متتابعين */
   fanfare(): void {
     this.play((ctx, t0) => {
