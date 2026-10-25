@@ -5,7 +5,6 @@ import { CheeseCourt } from "@/components/game/CheeseCourt";
 import { sfx } from "@/lib/sound";
 import {
   DEFAULT_ROUND,
-  ROUND_OPTIONS,
   verdictForCatch,
   type Verdict,
 } from "@/lib/game";
@@ -16,7 +15,7 @@ type Phase = "intro" | "countdown" | "running" | "final";
 
 export function CheeseGame() {
   const [phase, setPhase] = useState<Phase>("intro");
-  const [roundSeconds, setRoundSeconds] = useState<number>(DEFAULT_ROUND);
+  const roundSeconds = DEFAULT_ROUND; // ثابتة: 30 ثانية
   const [score, setScore] = useState(0);
   const [count, setCount] = useState(3);
   const [finalVerdict, setFinalVerdict] = useState<Verdict | null>(null);
@@ -125,23 +124,7 @@ export function CheeseGame() {
               <div className="mb-5 space-y-1.5 text-xs font-bold text-cream/75">
                 <p>🔟 كل جبنة تقدرها = +10 نقطة</p>
                 <p>💔 كل جبنة تسقط الترض = −5</p>
-                <p>⏱️ المدة: 30 أو 45 ثانية.. الصعوبة بتزيد مع الوقت</p>
-              </div>
-              <div className="mb-6 flex items-center justify-center gap-2">
-                {ROUND_OPTIONS.map((secs) => (
-                  <button
-                    key={secs}
-                    type="button"
-                    onClick={() => setRoundSeconds(secs)}
-                    className={`rounded-full px-5 py-2 text-sm font-black transition active:scale-95 ${
-                      roundSeconds === secs
-                        ? "bg-gold text-brand-dark shadow-md"
-                        : "border-2 border-cream/30 text-cream/80"
-                    }`}
-                  >
-                    {secs} ثانية
-                  </button>
-                ))}
+                <p>⏱️ معاك 30 ثانية بس.. والصعوبة بتزيد كل ثانية!</p>
               </div>
               <button
                 type="button"
@@ -159,11 +142,11 @@ export function CheeseGame() {
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-brand/60 text-center">
             <p
               key={count}
-              className="anim-pop text-8xl font-black tabular-nums text-gold drop-shadow-lg"
+              className="anim-pop text-[170px] font-black leading-none tabular-nums text-gold drop-shadow-[0_0_45px_rgba(224,178,82,0.5)]"
             >
               {count}
             </p>
-            <p className="mt-3 text-sm font-bold text-cream/85">
+            <p className="mt-6 text-base font-black text-cream drop-shadow">
               السلة بتتبع إصبعك.. استعد!
             </p>
           </div>

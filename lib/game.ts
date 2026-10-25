@@ -38,10 +38,7 @@ export const MISS_PENALTY = 5;
 /** أقل درجة مسموحة (مفيش درجات سلبية.. قلبنا طيب) */
 export const SCORE_FLOOR = 0;
 
-/** مدد الجولة المتاحة (ثواني) */
-export const ROUND_OPTIONS = [30, 45] as const;
-
-/** الافتراضي */
+/** مدة الجولة (ثواني) — ثابتة 30 في الديمو */
 export const DEFAULT_ROUND = 30;
 
 /** كيف الصعوبة 0..1 على طول الجولة: بترفع السرعة وتقلل فترة النزول */
@@ -51,7 +48,7 @@ export function difficultyAt(elapsedSec: number, roundSeconds: number): number {
 
 /** سرعة نزول الجبنة (وحدة viewBox/ثانية) بترتفع مع الصعوبة */
 export function fallSpeedAt(power: number): number {
-  return 160 + 185 * power; // 160 → 345
+  return 240 + 200 * power; // 240 → 440 — نسخة الديمـو: أسرع من الأصل
 }
 
 /** فترة بين كل جبنة والتانية بتقل مع الصعوبة (ثانية) */
