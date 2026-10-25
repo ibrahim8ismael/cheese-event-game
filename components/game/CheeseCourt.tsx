@@ -228,7 +228,7 @@ export function CheeseCourt({
     /* تهيئة الجولة */
     elapsedRef.current = 0;
     lastRef.current = performance.now();
-    spawnAtRef.current = 0.35;
+    spawnAtRef.current = 0.15;
     endedRef.current = false;
     scoreRef.current = 0;
     streakRef.current = 0;

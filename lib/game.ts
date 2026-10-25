@@ -46,14 +46,14 @@ export function difficultyAt(elapsedSec: number, roundSeconds: number): number {
   return Math.max(0, Math.min(1, elapsedSec / roundSeconds));
 }
 
-/** سرعة نزول الجبنة (وحدة viewBox/ثانية) بترتفع مع الصعوبة */
+/** سرعة نزول الجبنة (وحدة viewBox/ثانية): بداية سريعة وتزيد طول الجولة */
 export function fallSpeedAt(power: number): number {
-  return 240 + 200 * power; // 240 → 440 — نسخة الديمـو: أسرع من الأصل
+  return 360 + 300 * power; // 360 → 660
 }
 
-/** فترة بين كل جبنة والتانية بتقل مع الصعوبة (ثانية) */
+/** الفترة بين قطع الجبن: كثافة أعلى من البداية وتزيد حتى نهاية الجولة */
 export function spawnIntervalAt(power: number): number {
-  return Math.max(0.55, 1.35 - 0.75 * power); // 1.35 → 0.6
+  return Math.max(0.32, 0.85 - 0.53 * power); // 0.85 → 0.32
 }
 
 /** حكم الجولة الكاملة — الدرجة يتمرنها حسب مدة الجولة عشان المقارنة تفض عادلة */
