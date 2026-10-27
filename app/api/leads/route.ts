@@ -74,6 +74,37 @@ function text(value: unknown, maxLength: number): string {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
 
+/** مقارنة الموبايلات من غير الصفر اللي بيتشال لما الشيت يخزنه كرقم */
+function normalizePhone(value: string): string {
+  return value.replace(/[^\d]/g, "").replace(/^0+/, "");
+}
+
+/** بيدور على صف اللاعب بنفس الموبايل — عشان نحدّثه بدل ما نضيف صف جديد */
+async function findSheetRow(
+  token: string,
+  phone: string,
+): Promise<number | null> {
+  const range = encodeURIComponent(`${SHEET_TAB}!C2:C`);
+  const res = await fetch(
+    `${SHEETS_API}/${encodeURIComponent(SHEET_ID)}/values/${range}`,
+    {
+      headers: { authorization: `Bearer ${token}` },
+      cache: "no-store",
+    },
+  );
+  if (!res.ok) {
+    throw new Error(
+      `lookup ${res.status}: ${(await res.text()).slice(0, 200)}`,
+    );
+  }
+  const data = (await res.json()) as { values?: string[][] };
+  const target = normalizePhone(phone);
+  const index = (data.values ?? []).findIndex(
+    (cells) => normalizePhone(cells[0] ?? "") === target,
+  );
+  return index === -1 ? null : index + 2;
+}
+
 /**
  * POST على Apps Script Web App: السكريبت بيتنفّذ فورًا على أول POST،
  * وبعدها Google بيرد 302 على رابط النتيجة — بنقراه بـ GET،
@@ -167,6 +198,7 @@ export async function POST(request: Request) {
       }
       const reply = (await res.json().catch(() => null)) as {
         ok?: boolean;
+        action?: "inserted" | "updated";
       } | null;
       if (reply && reply.ok === false) {
         console.error("[leads] webhook rejected:", reply);
@@ -175,7 +207,11 @@ export async function POST(request: Request) {
           { status: 502 },
         );
       }
-      return Response.json({ ok: true, store: "sheet" });
+      return Response.json({
+        ok: true,
+        store: "sheet",
+        action: reply?.action ?? null,
+      });
     } catch (error) {
       console.error("[leads] webhook error:", error);
       return Response.json(
@@ -193,15 +229,16 @@ export async function POST(request: Request) {
 
   try {
     const token = await accessToken();
-    const range = encodeURIComponent(`${SHEET_TAB}!A1`);
-    const url = new URL(
-      `${SHEETS_API}/${encodeURIComponent(SHEET_ID)}/values/${range}:append`,
-    );
-    url.searchParams.set("valueInputOption", "USER_ENTERED");
-    url.searchParams.set("insertDataOption", "INSERT_ROWS");
+    const existingRow = await findSheetRow(token, phone);
+    const base = `${SHEETS_API}/${encodeURIComponent(SHEET_ID)}/values`;
+
+    /* نفس الموبايل = نفس الصف: بنحدّثه بدل ما نضيف صف جديد */
+    const url = existingRow
+      ? `${base}/${encodeURIComponent(`${SHEET_TAB}!A${existingRow}:G${existingRow}`)}?valueInputOption=RAW`
+      : `${base}/${encodeURIComponent(`${SHEET_TAB}!A1`)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
 
     const res = await fetch(url, {
-      method: "POST",
+      method: existingRow ? "PUT" : "POST",
       headers: {
         authorization: `Bearer ${token}`,
         "content-type": "application/json",
@@ -212,7 +249,7 @@ export async function POST(request: Request) {
 
     if (!res.ok) {
       console.error(
-        "[leads] sheets append failed:",
+        "[leads] sheets write failed:",
         res.status,
         (await res.text()).slice(0, 300),
       );
