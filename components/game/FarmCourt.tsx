@@ -171,7 +171,7 @@ export function FarmCourt({
     spawnFloat(
       x,
       geoNow().floorY - 30,
-      `\u2212${MISS_PENALTY}`,
+      `خصم ${MISS_PENALTY}`,
       "#ff9d9d",
       now,
     );
@@ -184,7 +184,7 @@ export function FarmCourt({
     shakeStartRef.current = now;
     sfx.boom();
     onMiss(scoreRef.current);
-    spawnFloat(x, geoNow().catchY - 62, `\u2212${BOMB_PENALTY}`, "#ff9d9d", now);
+    spawnFloat(x, geoNow().catchY - 62, `خصم ${BOMB_PENALTY}`, "#ff9d9d", now);
     spawnBoom(x, geoNow().catchY + 6, now);
   };
 

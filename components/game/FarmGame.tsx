@@ -91,6 +91,7 @@ export function FarmGame() {
   const [count, setCount] = useState(3);
   const [finalVerdict, setFinalVerdict] = useState<Verdict | null>(null);
   const [finalOffer, setFinalOffer] = useState<GameOffer | null>(null);
+  const [giftRevealed, setGiftRevealed] = useState(false);
   const [muted, setMuted] = useState(false);
   const [attemptsUsed, setAttemptsUsed] = useState(0);
 
@@ -131,6 +132,7 @@ export function FarmGame() {
     setScore(0);
     setFinalVerdict(null);
     setFinalOffer(null);
+    setGiftRevealed(false);
     setSubmitState("idle");
     setSubmitStore(null);
     submitSeqRef.current += 1; // لو فيه إرسال قديم شغال.. نلاشي نتيجته
@@ -218,6 +220,7 @@ export function FarmGame() {
     /* آخر محاولة: دي النتيجة النهائية */
     pendingLeadRef.current = null;
     goTo("final");
+    setGiftRevealed(false);
     void postLead(payload);
   };
 
@@ -232,6 +235,7 @@ export function FarmGame() {
     const payload = pendingLeadRef.current;
     pendingLeadRef.current = null;
     goTo("final");
+    setGiftRevealed(false);
     if (payload) void postLead(payload);
   };
 
@@ -247,14 +251,14 @@ export function FarmGame() {
     }
     if (!/^(010|011|012|015)\d{8}$/.test(digits)) {
       setLeadErrorField("phone");
-      setLeadError("الرقم لازم 11 رقم يبدأ بـ 010 / 011 / 012 / 015");
+      setLeadError("رقم الواتساب لازم يكون 11 رقم ويبدأ بـ 010 أو 011 أو 012 أو 015");
       return;
     }
 
     const used = attemptsFor(digits);
     if (used >= MAX_ATTEMPTS) {
       setLeadErrorField("phone");
-      setLeadError("الرقم ده استخدم محاولتينه خلاص 🍯 كل لاعب له محاولتين بس");
+      setLeadError("الرقم ده استنفد محاولتيه 🍯 كل لاعب له محاولتين بس");
       return;
     }
 
@@ -276,8 +280,8 @@ export function FarmGame() {
               تحدي هيماز فارم 🍯
             </p>
             <p className="text-[11px] font-bold text-brand/50">
-              <span dir="ltr">+{CATCH_POINTS}</span> في السلة ·{" "}
-              <span dir="ltr">-{MISS_PENALTY}</span> خارجها
+              <span dir="ltr">+{CATCH_POINTS}</span> في السلة · خصم{" "}
+              <bdi dir="ltr">{MISS_PENALTY}</bdi> خارجها
             </p>
           </div>
           <p className="text-[9px] font-bold tracking-wide text-brand/40">
@@ -336,27 +340,27 @@ export function FarmGame() {
                 </p>
                 <p>
                   المنتج خارج السلة ={" "}
-                  <span className="text-rose-200" dir="ltr">
-                    -{MISS_PENALTY}
+                  <span className="text-rose-200">
+                    خصم <bdi dir="ltr">{MISS_PENALTY}</bdi>
                   </span>{" "}
                   نقاط
                 </p>
                 <p>
                   القنبلة في السلة ={" "}
-                  <span className="text-rose-300" dir="ltr">
-                    -{BOMB_PENALTY}
+                  <span className="text-rose-300">
+                    خصم <bdi dir="ltr">{BOMB_PENALTY}</bdi>
                   </span>
                 </p>
               </div>
               <p className="mb-5 text-[11px] font-bold text-cream/70">
-                ⏱️ الجولة 30 ثانية — 🔁 محاولتين وآخر نتيجة هي اللي بتتحسب
+                ⏱️ الجولة 30 ثانية، وليك محاولتين وآخر نتيجة هي اللي بتتحسب 🔁
               </p>
               <button
                 type="button"
                 onClick={() => goTo("signup")}
                 className="w-full rounded-full bg-gold px-9 py-3 text-base font-black text-brand-dark shadow-lg shadow-black/25 transition active:scale-95"
               >
-                فاهم.. يلا بينا!
+                تمام، يلا بينا!
               </button>
             </div>
           </div>
@@ -368,10 +372,10 @@ export function FarmGame() {
             <div className="anim-rise my-auto w-full max-w-sm">
               <p className="mb-2 text-4xl">📝</p>
               <h2 className="mb-1 text-2xl font-black text-gold">
-                سجّل بياناتك
+                خطوة مهمة قبل اللعب!
               </h2>
               <p className="mb-4 text-sm font-semibold text-cream/85">
-                عشان نوصلك بالعرض على واتساب
+                اكتب بياناتك لاستلام كود هديتك عبر الواتساب فورًا:
               </p>
               <form onSubmit={handleStartSubmit} className="space-y-2 text-right">
                 <label
@@ -398,7 +402,7 @@ export function FarmGame() {
                   htmlFor="lead-phone"
                   className="block text-xs font-black text-gold-soft"
                 >
-                  رقم موبايلك
+                  رقم الواتساب
                 </label>
                 <input
                   id="lead-phone"
@@ -417,19 +421,22 @@ export function FarmGame() {
                   maxLength={11}
                   className="w-full rounded-xl bg-cream px-4 py-2.5 text-left text-base font-bold text-brand-dark placeholder-brand/40 outline-none ring-2 ring-transparent transition focus:ring-gold"
                 />
+                <p className="text-xs font-semibold text-gold-soft">
+                  علشان هنبعت لك عليه الجايزة بتاعتك
+                </p>
                 {leadError ? (
                   <p role="alert" className="text-center text-xs font-bold text-rose-200">
                     {leadError}
                   </p>
                 ) : null}
                 <p className="text-center text-[10px] font-semibold leading-relaxed text-cream/55">
-                  بإدخال بياناتك، إنت موافق نتواصل معاك على واتساب بخصوص العرض.
+                  بإدخال بياناتك، بتوافق إننا نتواصل معاك على واتساب بخصوص جائزتك.
                 </p>
                 <button
                   type="submit"
                   className="mt-2 w-full rounded-full bg-gold px-9 py-3 text-base font-black text-brand-dark shadow-lg shadow-black/25 transition active:scale-95"
                 >
-                  سجّل وابدأ اللعب
+                  تأكيد وابدأ اللعب
                 </button>
               </form>
             </div>
@@ -455,40 +462,33 @@ export function FarmGame() {
         {phase === "interlude" && finalVerdict ? (
           <div className="absolute inset-0 z-10 flex flex-col overflow-y-auto bg-brand/90 p-6 py-8 text-center backdrop-blur-sm">
             <div className="anim-rise mx-auto my-auto w-full max-w-sm">
-              <p className="mb-1 text-sm font-bold text-gold-soft">
-                خلّصت محاولتك الأولى يا {leadName}
+              <p className="mb-3 text-xl font-black text-gold-soft">
+                عاش يا بطل .. سكور ممتاز! 🔥
               </p>
-              <p className="mb-2 text-6xl font-black tabular-nums text-gold">
+              <p className="mb-1 text-sm font-bold text-cream">
+                مجموع نقاطك في الجولة دي:
+              </p>
+              <p className="mb-3 text-6xl font-black tabular-nums text-gold">
                 {score}
               </p>
-              <p className="mb-1 text-lg font-black text-cream">
-                {finalVerdict.title}
-              </p>
-              <p className="mb-5 text-sm font-semibold text-cream/70">
-                {finalVerdict.sub}
-              </p>
-
-              <p className="mb-3 text-base font-black text-cream">
-                عايز فرصة تانية تحسن نتيجتك؟
-              </p>
-              <p className="mb-5 rounded-xl bg-black/20 px-3 py-2 text-xs font-bold leading-relaxed text-gold-soft">
-                ⚠️ لو أخدت الفرصة التانية، هتفقد الجايزة دي.
+              <p className="mb-5 text-sm font-semibold leading-relaxed text-cream/85">
+                قدامك محاولة تانية وأخيرة تقدر تزود بيها نقاطك وتنافس على هدية أعلى!
               </p>
 
               <div className="flex flex-col gap-2">
                 <button
                   type="button"
-                  onClick={skipSecondChance}
+                  onClick={takeSecondChance}
                   className="rounded-full bg-gold px-9 py-3 text-base font-black text-brand-dark shadow-lg shadow-black/25 transition active:scale-95"
                 >
-                  استلم جايزتي 🎁
+                  العب محاولتك الأخيرة
                 </button>
                 <button
                   type="button"
-                  onClick={takeSecondChance}
+                  onClick={skipSecondChance}
                   className="rounded-full border-2 border-cream/25 py-2.5 text-sm font-black text-cream transition active:scale-95"
                 >
-                  عايز فرصة تانية
+                  راضي بالسكور ده.. عرفني هديتي
                 </button>
               </div>
             </div>
@@ -499,37 +499,59 @@ export function FarmGame() {
         {phase === "final" && finalVerdict ? (
           <div className="absolute inset-0 z-10 flex flex-col overflow-y-auto bg-brand/85 p-6 py-8 text-center backdrop-blur-sm">
             <div className="anim-rise mx-auto my-auto w-full max-w-sm">
-              <p className="mb-1 text-sm font-bold text-gold-soft">
-                نتيجتك النهائية يا {leadName}
+              <p className="mb-1 text-2xl font-black text-gold-soft">
+                مبروك!
               </p>
-              <p className="mb-2 text-6xl font-black tabular-nums text-gold">
+              <p className="mb-1 text-base font-bold text-cream">
+                ده السكور النهائي بتاعك
+              </p>
+              <p className="mb-1 text-sm font-semibold text-cream/75">
+                السكور المعتمد:
+              </p>
+              <p className="mb-3 text-6xl font-black tabular-nums text-gold">
                 {score}
               </p>
-              <p className="mb-5 text-xl font-black text-cream">
-                {finalVerdict.title}
+              <p className="mb-5 text-sm font-semibold leading-relaxed text-cream/85">
+                استنفذت محاولاتك، وجاهزين نحدد جائزتك!
               </p>
 
-              <div className="mb-5 rounded-2xl border border-gold/50 bg-cream/10 p-4">
-                {finalOffer ? (
-                  <>
-                    <p className="text-base font-black text-cream">
-                      🎁 عرضك محفوظ — هيتابع معاك على واتساب
+              {!giftRevealed ? (
+                <button
+                  type="button"
+                  onClick={() => setGiftRevealed(true)}
+                  className="mb-5 w-full rounded-full bg-gold px-9 py-3 text-base font-black text-brand-dark shadow-lg shadow-black/25 transition active:scale-95"
+                >
+                  اعرف هديتك واستلمها فورًا
+                </button>
+              ) : (
+                <div className="mb-5 rounded-2xl border border-gold/50 bg-cream/10 p-4">
+                  {finalOffer ? (
+                    <>
+                      <p className="text-base font-black text-cream">
+                        🎁 هديتك: {finalOffer.kind === "discount"
+                          ? `خصم ${finalOffer.percent}%`
+                          : finalOffer.product}
+                      </p>
+                      {finalOffer.code ? (
+                        <p className="mt-2 text-sm font-semibold text-gold-soft">
+                          كود العرض: <bdi dir="ltr">{finalOffer.code}</bdi>
+                        </p>
+                      ) : (
+                        <p className="mt-2 text-sm font-semibold text-cream/75">
+                          هنبعت لك كود الجايزة على واتساب
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm font-semibold text-cream/85">
+                      هنتواصل معاك على واتساب ونحدد جائزتك
                     </p>
-                    <p className="mt-1 text-sm font-semibold text-cream/75">
-                      على الرقم <span dir="ltr">{leadPhone}</span>
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-base font-black text-cream">
-                      📲 هنتواصل معاك على واتساب
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-cream/70">
-                      على الرقم <span dir="ltr">{leadPhone}</span>
-                    </p>
-                  </>
-                )}
-              </div>
+                  )}
+                  <p className="mt-2 text-xs font-semibold text-cream/65">
+                    رقم الواتساب: <bdi dir="ltr">{leadPhone}</bdi>
+                  </p>
+                </div>
+              )}
 
               <div aria-live="polite" className="mb-4 min-h-4 text-xs font-bold">
                 {submitState === "sending" ? (
@@ -537,7 +559,7 @@ export function FarmGame() {
                 ) : null}
                 {submitState === "done" && submitStore === "console" ? (
                   <p className="text-gold-soft">
-                    وضع الديمو: النتيجة اتسجلت في كونسول السيرفر — الشيت لسه
+                    وضع الديمو: النتيجة اتسجلت في كونسول السيرفر. الشيت لسه
                     مش متوصل ⚠️
                   </p>
                 ) : null}

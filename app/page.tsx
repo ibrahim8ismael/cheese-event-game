@@ -29,7 +29,7 @@ export default function Home() {
       </section>
 
       <footer className="hidden px-5 py-5 text-center text-xs font-semibold text-brand/70 sm:block">
-        <p className="mb-1">من هيماز فارم — منتجات طبيعية من قلب الطبيعة</p>
+        <p className="mb-1">من هيماز فارم، منتجات طبيعية من قلب الطبيعة</p>
         <a
           href="https://himasfarm.com"
           target="_blank"
