@@ -90,8 +90,6 @@ export function FarmGame() {
   const [score, setScore] = useState(0);
   const [count, setCount] = useState(3);
   const [finalVerdict, setFinalVerdict] = useState<Verdict | null>(null);
-  const [finalOffer, setFinalOffer] = useState<GameOffer | null>(null);
-  const [giftRevealed, setGiftRevealed] = useState(false);
   const [muted, setMuted] = useState(false);
   const [attemptsUsed, setAttemptsUsed] = useState(0);
 
@@ -131,8 +129,6 @@ export function FarmGame() {
     clearTimers();
     setScore(0);
     setFinalVerdict(null);
-    setFinalOffer(null);
-    setGiftRevealed(false);
     setSubmitState("idle");
     setSubmitStore(null);
     submitSeqRef.current += 1; // لو فيه إرسال قديم شغال.. نلاشي نتيجته
@@ -198,7 +194,6 @@ export function FarmGame() {
 
     setScore(finalScore);
     setFinalVerdict(verdict);
-    setFinalOffer(offer);
     setAttemptsUsed(recordAttempt(leadPhone));
 
     const payload: LeadPayload = {
@@ -220,7 +215,6 @@ export function FarmGame() {
     /* آخر محاولة: دي النتيجة النهائية */
     pendingLeadRef.current = null;
     goTo("final");
-    setGiftRevealed(false);
     void postLead(payload);
   };
 
@@ -235,7 +229,6 @@ export function FarmGame() {
     const payload = pendingLeadRef.current;
     pendingLeadRef.current = null;
     goTo("final");
-    setGiftRevealed(false);
     if (payload) void postLead(payload);
   };
 
@@ -515,43 +508,14 @@ export function FarmGame() {
                 استنفذت محاولاتك، وجاهزين نحدد جائزتك!
               </p>
 
-              {!giftRevealed ? (
-                <button
-                  type="button"
-                  onClick={() => setGiftRevealed(true)}
-                  className="mb-5 w-full rounded-full bg-gold px-9 py-3 text-base font-black text-brand-dark shadow-lg shadow-black/25 transition active:scale-95"
-                >
-                  اعرف هديتك واستلمها فورًا
-                </button>
-              ) : (
-                <div className="mb-5 rounded-2xl border border-gold/50 bg-cream/10 p-4">
-                  {finalOffer ? (
-                    <>
-                      <p className="text-base font-black text-cream">
-                        🎁 هديتك: {finalOffer.kind === "discount"
-                          ? `خصم ${finalOffer.percent}%`
-                          : finalOffer.product}
-                      </p>
-                      {finalOffer.code ? (
-                        <p className="mt-2 text-sm font-semibold text-gold-soft">
-                          كود العرض: <bdi dir="ltr">{finalOffer.code}</bdi>
-                        </p>
-                      ) : (
-                        <p className="mt-2 text-sm font-semibold text-cream/75">
-                          هنبعت لك كود الجايزة على واتساب
-                        </p>
-                      )}
-                    </>
-                  ) : (
-                    <p className="text-sm font-semibold text-cream/85">
-                      هنتواصل معاك على واتساب ونحدد جائزتك
-                    </p>
-                  )}
-                  <p className="mt-2 text-xs font-semibold text-cream/65">
-                    رقم الواتساب: <bdi dir="ltr">{leadPhone}</bdi>
-                  </p>
-                </div>
-              )}
+              <div className="mb-5 rounded-2xl border border-gold/50 bg-cream/10 p-4">
+                <p className="text-base font-black text-cream">
+                  📲 هنبعت لك كود هديتك على الواتساب فورًا
+                </p>
+                <p className="mt-2 text-xs font-semibold text-cream/65">
+                  على الرقم <bdi dir="ltr">{leadPhone}</bdi>
+                </p>
+              </div>
 
               <div aria-live="polite" className="mb-4 min-h-4 text-xs font-bold">
                 {submitState === "sending" ? (
