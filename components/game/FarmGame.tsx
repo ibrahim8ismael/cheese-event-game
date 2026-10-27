@@ -469,24 +469,23 @@ export function FarmGame() {
                 عايز فرصة تانية تحسن نتيجتك؟
               </p>
               <p className="mb-5 rounded-xl bg-black/20 px-3 py-2 text-xs font-bold leading-relaxed text-gold-soft">
-                ⚠️ لو أخدت الفرصة التانية، نتيجة {score} دي مش هتتحسب — النتيجة
-                الجديدة هي اللي هتتسجل.
+                ⚠️ لو أخدت الفرصة التانية، هتفقد الجايزة دي.
               </p>
 
               <div className="flex flex-col gap-2">
                 <button
                   type="button"
-                  onClick={takeSecondChance}
+                  onClick={skipSecondChance}
                   className="rounded-full bg-gold px-9 py-3 text-base font-black text-brand-dark shadow-lg shadow-black/25 transition active:scale-95"
                 >
-                  عايز فرصة تانية
+                  استلم جايزتي 🎁
                 </button>
                 <button
                   type="button"
-                  onClick={skipSecondChance}
+                  onClick={takeSecondChance}
                   className="rounded-full border-2 border-cream/25 py-2.5 text-sm font-black text-cream transition active:scale-95"
                 >
-                  لأ، سجّل النتيجة دي
+                  عايز فرصة تانية
                 </button>
               </div>
             </div>
@@ -533,15 +532,11 @@ export function FarmGame() {
                 {submitState === "sending" ? (
                   <p className="text-cream/60">بنسجل نتيجتك.. ⏳</p>
                 ) : null}
-                {submitState === "done" ? (
-                  submitStore === "sheet" ? (
-                    <p className="text-mint">تم تسجيل نتيجتك ✅</p>
-                  ) : (
-                    <p className="text-gold-soft">
-                      وضع الديمو: النتيجة اتسجلت في كونسول السيرفر — الشيت لسه
-                      مش متوصل ⚠️
-                    </p>
-                  )
+                {submitState === "done" && submitStore === "console" ? (
+                  <p className="text-gold-soft">
+                    وضع الديمو: النتيجة اتسجلت في كونسول السيرفر — الشيت لسه
+                    مش متوصل ⚠️
+                  </p>
                 ) : null}
                 {submitState === "error" ? (
                   <div className="flex flex-wrap items-center justify-center gap-2 text-rose-200">
