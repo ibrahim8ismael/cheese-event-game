@@ -60,7 +60,13 @@ const offerLabel = (offer: GameOffer | null): string =>
       ? `خصم ${offer.percent}%`
       : `منتج مجاني: ${offer.product}`;
 
-type Phase = "intro" | "countdown" | "running" | "final";
+type Phase =
+  | "welcome"
+  | "signup"
+  | "countdown"
+  | "running"
+  | "interlude"
+  | "final";
 type SubmitState = "idle" | "sending" | "done" | "error";
 
 interface LeadPayload {
@@ -73,13 +79,12 @@ interface LeadPayload {
 }
 
 export function CheeseGame() {
-  const [phase, setPhase] = useState<Phase>("intro");
+  const [phase, setPhase] = useState<Phase>("welcome");
   const roundSeconds = DEFAULT_ROUND; // ثابتة: 30 ثانية
   const [score, setScore] = useState(0);
   const [count, setCount] = useState(3);
   const [finalVerdict, setFinalVerdict] = useState<Verdict | null>(null);
   const [finalOffer, setFinalOffer] = useState<GameOffer | null>(null);
-  const [offerCodeCopied, setOfferCodeCopied] = useState(false);
   const [muted, setMuted] = useState(false);
   const [attemptsUsed, setAttemptsUsed] = useState(0);
 
@@ -96,6 +101,8 @@ export function CheeseGame() {
   );
   const submitSeqRef = useRef(0);
   const lastLeadRef = useRef<LeadPayload | null>(null);
+  /* نتيجة المحاولة الأولى — مش بتتبعت غير لو اللاعب رفض الفرصة التانية */
+  const pendingLeadRef = useRef<LeadPayload | null>(null);
 
   const timers = useRef<Array<ReturnType<typeof setTimeout>>>([]);
 
@@ -118,7 +125,6 @@ export function CheeseGame() {
     setScore(0);
     setFinalVerdict(null);
     setFinalOffer(null);
-    setOfferCodeCopied(false);
     setSubmitState("idle");
     setSubmitStore(null);
     submitSeqRef.current += 1; // لو فيه إرسال قديم شغال.. نلاشي نتيجته
@@ -178,31 +184,49 @@ export function CheeseGame() {
   };
 
   const onEndCourt = (finalScore: number) => {
-    setScore(finalScore);
     const verdict = verdictForCatch(finalScore, roundSeconds);
     const offer = offerForScore(finalScore);
+    const attemptNo = attemptsUsed + 1;
+
+    setScore(finalScore);
     setFinalVerdict(verdict);
     setFinalOffer(offer);
     setAttemptsUsed(recordAttempt(leadPhone));
-    goTo("final");
-    void postLead({
+
+    const payload: LeadPayload = {
       name: leadName.trim(),
       phone: leadPhone,
       score: finalScore,
       verdict: verdict.title,
       offer: offerLabel(offer),
       offerCode: offer?.code ?? "",
-    });
+    };
+
+    /* أول محاولة: بنستنى قرار الفرصة التانية قبل أي إرسال للشيت */
+    if (attemptNo === 1) {
+      pendingLeadRef.current = payload;
+      goTo("interlude");
+      return;
+    }
+
+    /* آخر محاولة: دي النتيجة النهائية */
+    pendingLeadRef.current = null;
+    goTo("final");
+    void postLead(payload);
   };
 
-  const copyOfferCode = async () => {
-    if (!finalOffer?.code) return;
-    try {
-      await navigator.clipboard.writeText(finalOffer.code);
-      setOfferCodeCopied(true);
-    } catch {
-      setOfferCodeCopied(false);
-    }
+  /** فرصة تانية: النتيجة الأولى بتتلغي ومش بتتبعت */
+  const takeSecondChance = () => {
+    pendingLeadRef.current = null;
+    startGame();
+  };
+
+  /** رفض الفرصة التانية: سجّل نتيجة المحاولة الأولى زي ما هي */
+  const skipSecondChance = () => {
+    const payload = pendingLeadRef.current;
+    pendingLeadRef.current = null;
+    goTo("final");
+    if (payload) void postLead(payload);
   };
 
   /** Validate the contact details before the local demo round starts. */
@@ -282,23 +306,50 @@ export function CheeseGame() {
           onEnd={onEndCourt}
         />
 
-        {/* شاشة البداية */}
-        {phase === "intro" ? (
+        {/* شاشة الشرح */}
+        {phase === "welcome" ? (
           <div className="absolute inset-0 z-10 flex items-center justify-center overflow-y-auto bg-brand/85 p-4 text-center backdrop-blur-sm sm:p-6">
             <div className="anim-rise my-auto w-full max-w-sm">
               <p className="mb-2 text-4xl">🧀</p>
               <h2 className="mb-1 text-2xl font-black text-gold">
-                الجبنة بتقصط من السماء!
+                جبنة السماء
               </h2>
-              <p className="mb-3 text-sm font-semibold text-cream/85">
-                حرّك السلة بسرعة واقبض الجبن قبل ما تقع!
+              <p className="mb-4 text-sm font-semibold text-cream/85">
+                إزاي تلعب؟ بسيطة..
               </p>
-              <div className="mb-4 space-y-1 text-xs font-bold text-cream/75">
-                <p>🔟 كل جبنة تقبضها = +10 نقطة</p>
-                <p>💔 كل جبنة تسقط = −5</p>
-                <p>⏱️ 30 ثانية — السرعة والجبن بيزيدوا مع الوقت</p>
-                <p>🎯 محاولتين بس — آخر نتيجة هي اللي بتتحسب</p>
+              <div className="mb-5 space-y-2 rounded-2xl bg-cream/10 p-4 text-right text-sm font-bold text-cream/85">
+                <p>🖐️ حرّك السلة بإصبعك — أو بأسهم الكيبورد</p>
+                <p>
+                  🧀 كل جبنة تقبضها = <span className="text-gold">+10</span> نقطة
+                </p>
+                <p>
+                  💔 كل جبنة تقع = <span className="text-rose-200">−5</span>
+                </p>
+                <p>⏱️ الجولة 30 ثانية — والسرعة بتزيد</p>
+                <p>🔁 عندك محاولتين — آخر نتيجة هي اللي بتتحسب</p>
               </div>
+              <button
+                type="button"
+                onClick={() => goTo("signup")}
+                className="w-full rounded-full bg-gold px-9 py-3 text-base font-black text-brand-dark shadow-lg shadow-black/25 transition active:scale-95"
+              >
+                فهمت، يلا نلعب
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {/* التسجيل */}
+        {phase === "signup" ? (
+          <div className="absolute inset-0 z-10 flex items-center justify-center overflow-y-auto bg-brand/85 p-4 text-center backdrop-blur-sm sm:p-6">
+            <div className="anim-rise my-auto w-full max-w-sm">
+              <p className="mb-2 text-4xl">📝</p>
+              <h2 className="mb-1 text-2xl font-black text-gold">
+                سجّل بياناتك
+              </h2>
+              <p className="mb-4 text-sm font-semibold text-cream/85">
+                عشان نوصلك بالعرض على واتساب
+              </p>
               <form onSubmit={handleStartSubmit} className="space-y-2 text-right">
                 <label
                   htmlFor="lead-name"
@@ -348,6 +399,9 @@ export function CheeseGame() {
                     {leadError}
                   </p>
                 ) : null}
+                <p className="text-center text-[10px] font-semibold leading-relaxed text-cream/55">
+                  بإدخال بياناتك، إنت موافق نتواصل معاك على واتساب بخصوص العرض.
+                </p>
                 <button
                   type="submit"
                   className="mt-2 w-full rounded-full bg-gold px-9 py-3 text-base font-black text-brand-dark shadow-lg shadow-black/25 transition active:scale-95"
@@ -374,54 +428,86 @@ export function CheeseGame() {
           </div>
         ) : null}
 
-        {/* النتيجة النهائية */}
-        {phase === "final" && finalVerdict ? (
-          <div className="absolute inset-0 z-10 flex flex-col overflow-y-auto bg-brand/85 p-6 py-8 text-center backdrop-blur-sm">
+        {/* بين المحاولتين — قرار الفرصة التانية */}
+        {phase === "interlude" && finalVerdict ? (
+          <div className="absolute inset-0 z-10 flex flex-col overflow-y-auto bg-brand/90 p-6 py-8 text-center backdrop-blur-sm">
             <div className="anim-rise mx-auto my-auto w-full max-w-sm">
               <p className="mb-1 text-sm font-bold text-gold-soft">
-                نتيجتك يا {leadName} · محاولة {attemptsUsed} من {MAX_ATTEMPTS}
+                خلّصت محاولتك الأولى يا {leadName}
               </p>
               <p className="mb-2 text-6xl font-black tabular-nums text-gold">
                 {score}
               </p>
-              <p className="mb-1 text-xl font-black text-cream">
+              <p className="mb-1 text-lg font-black text-cream">
                 {finalVerdict.title}
               </p>
               <p className="mb-5 text-sm font-semibold text-cream/70">
                 {finalVerdict.sub}
               </p>
 
-              {finalOffer ? (
-                <div className="mb-5 rounded-2xl border border-gold/50 bg-cream/10 p-4">
-                  <p className="mb-1 text-xs font-black text-gold-soft">
-                    {finalOffer.kind === "discount"
-                      ? `مبروك! كسبت خصم ${finalOffer.percent}% 🎉`
-                      : "مبروك! كسبت منتج مجاني 🎁"}
-                  </p>
-                  {finalOffer.kind === "free-product" ? (
-                    <p className="text-lg font-black text-cream">
-                      {finalOffer.product}
+              <p className="mb-3 text-base font-black text-cream">
+                عايز فرصة تانية تحسن نتيجتك؟
+              </p>
+              <p className="mb-5 rounded-xl bg-black/20 px-3 py-2 text-xs font-bold leading-relaxed text-gold-soft">
+                ⚠️ لو أخدت الفرصة التانية، نتيجة {score} دي مش هتتحسب — النتيجة
+                الجديدة هي اللي هتتسجل.
+              </p>
+
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={takeSecondChance}
+                  className="rounded-full bg-gold px-9 py-3 text-base font-black text-brand-dark shadow-lg shadow-black/25 transition active:scale-95"
+                >
+                  عايز فرصة تانية
+                </button>
+                <button
+                  type="button"
+                  onClick={skipSecondChance}
+                  className="rounded-full border-2 border-cream/25 py-2.5 text-sm font-black text-cream transition active:scale-95"
+                >
+                  لأ، سجّل النتيجة دي
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {/* النتيجة النهائية */}
+        {phase === "final" && finalVerdict ? (
+          <div className="absolute inset-0 z-10 flex flex-col overflow-y-auto bg-brand/85 p-6 py-8 text-center backdrop-blur-sm">
+            <div className="anim-rise mx-auto my-auto w-full max-w-sm">
+              <p className="mb-1 text-sm font-bold text-gold-soft">
+                نتيجتك النهائية يا {leadName}
+              </p>
+              <p className="mb-2 text-6xl font-black tabular-nums text-gold">
+                {score}
+              </p>
+              <p className="mb-5 text-xl font-black text-cream">
+                {finalVerdict.title}
+              </p>
+
+              <div className="mb-5 rounded-2xl border border-gold/50 bg-cream/10 p-4">
+                {finalOffer ? (
+                  <>
+                    <p className="text-base font-black text-cream">
+                      🎁 عرضك محفوظ — هيتابع معاك على واتساب
                     </p>
-                  ) : null}
-                  {finalOffer.code ? (
-                    <div className="mt-3 flex items-center justify-center gap-2">
-                      <code
-                        dir="ltr"
-                        className="rounded-lg bg-black/20 px-3 py-2 font-black text-gold"
-                      >
-                        {finalOffer.code}
-                      </code>
-                      <button
-                        type="button"
-                        onClick={copyOfferCode}
-                        className="rounded-lg border border-cream/30 px-3 py-2 text-xs font-bold text-cream"
-                      >
-                        {offerCodeCopied ? "اتنسخ" : "انسخ الكود"}
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
+                    <p className="mt-1 text-sm font-semibold text-cream/75">
+                      على الرقم <span dir="ltr">{leadPhone}</span>
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-base font-black text-cream">
+                      📲 هنتواصل معاك على واتساب
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-cream/70">
+                      على الرقم <span dir="ltr">{leadPhone}</span>
+                    </p>
+                  </>
+                )}
+              </div>
 
               <div aria-live="polite" className="mb-4 min-h-4 text-xs font-bold">
                 {submitState === "sending" ? (
@@ -429,7 +515,7 @@ export function CheeseGame() {
                 ) : null}
                 {submitState === "done" ? (
                   submitStore === "sheet" ? (
-                    <p className="text-mint">تم تسجيل النتيجة في السجل ✅</p>
+                    <p className="text-mint">تم تسجيل نتيجتك ✅</p>
                   ) : (
                     <p className="text-gold-soft">
                       وضع الديمو: النتيجة اتسجلت في كونسول السيرفر — الشيت لسه
@@ -451,35 +537,14 @@ export function CheeseGame() {
                 ) : null}
               </div>
 
-              <div className="flex flex-col items-stretch gap-2">
-                {attemptsUsed < MAX_ATTEMPTS ? (
-                  <p className="rounded-lg bg-black/15 px-3 py-2 text-[11px] font-bold leading-relaxed text-gold-soft">
-                    ⚠️ المحاولة التانية هتستبدل نتيجتك الحالية ({score} نقطة) —
-                    حتى لو أقل
-                  </p>
-                ) : null}
-                {attemptsUsed < MAX_ATTEMPTS ? (
-                  <button
-                    type="button"
-                    onClick={startGame}
-                    className="rounded-full border-2 border-cream/25 py-2.5 text-sm font-black text-cream transition active:scale-95"
-                  >
-                    العب تاني — محاولة {attemptsUsed + 1} من {MAX_ATTEMPTS}
-                  </button>
-                ) : (
-                  <p className="rounded-full border-2 border-cream/15 py-2.5 text-sm font-black text-cream/60">
-                    🧀 خلصت محاولتينك — بالتوفيق!
-                  </p>
-                )}
-                <a
-                  href={STORE_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded-full border-2 border-gold-soft/70 py-2.5 text-sm font-black text-gold-soft transition active:scale-95"
-                >
-                  زور المتجر 🛒
-                </a>
-              </div>
+              <a
+                href={STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block rounded-full border-2 border-gold-soft/70 py-2.5 text-sm font-black text-gold-soft transition active:scale-95"
+              >
+                زور المتجر 🛒
+              </a>
             </div>
           </div>
         ) : null}
