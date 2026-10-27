@@ -570,57 +570,36 @@ export function FarmCourt({
             }}
             visibility="hidden"
           >
-            {/* برطمان عسل: جسم منحني + غطا بالدماغة + عسل نازل */}
+            {/* قرص العسل */}
             <g
               ref={(el) => {
                 partRefs.current[i][0] = el;
               }}
             >
-              {/* الجسم */}
-              <path
-                d="M -18,-2 C -25,11 -22,21 -14,24 C -6,27 6,27 14,24 C 22,21 25,11 18,-2 Z"
-                fill="#eeab3c"
-                stroke="#b9811f"
-                strokeWidth={2.5}
+              <image
+                href="/products/honeycomb.png"
+                x={-40}
+                y={-36}
+                width={80}
+                height={72}
+                preserveAspectRatio="xMidYMid meet"
               />
-              {/* عسل نازل من الجنب */}
-              <ellipse cx={19.5} cy={3} rx={3.2} ry={6.5} fill="#f7c35a" />
-              <circle cx={19.5} cy={11.5} r={2.4} fill="#f7c35a" />
-              {/* رومه الغطا */}
-              <rect x={-22} y={-9} width={44} height={8} rx={4} fill="#6f4813" stroke="#512f06" strokeWidth={1.5} />
-              {/* قبة الغطا */}
-              <path d="M -17,-9 Q 0,-27 17,-9 Z" fill="#8a5a1e" stroke="#512f06" strokeWidth={1.5} />
-              {/* دماغة */}
-              <circle cx={0} cy={-21} r={4} fill="#8a5a1e" stroke="#512f06" strokeWidth={1.5} />
-              {/* كارت العلامة */}
-              <rect x={-12} y={6} width={24} height={11} rx={4} fill="#fbf7f0" />
-              <circle cx={0} cy={11.5} r={3} fill="#e8a33d" />
-              {/* بريق زجاج */}
-              <ellipse cx={-10} cy={6} rx={3} ry={8} fill="#ffffff" opacity={0.25} />
             </g>
-            {/* علبة تمر: حبات طالعة من علبة بحافه دهبي */}
+            {/* تمرة */}
             <g
               ref={(el) => {
                 partRefs.current[i][1] = el;
               }}
               visibility="hidden"
             >
-              {/* حبات التمر الطالعة من فوق */}
-              <ellipse cx={-11.5} cy={-21} rx={4.8} ry={8} fill="#a24f22" transform="rotate(-16 -11.5 -21)" />
-              <ellipse cx={0} cy={-23} rx={4.8} ry={8.6} fill="#b95d2e" />
-              <ellipse cx={11.5} cy={-21} rx={4.8} ry={8} fill="#8a3d1a" transform="rotate(16 11.5 -21)" />
-              {/* العلبة */}
-              <rect x={-25} y={-15} width={50} height={33} rx={10} fill="#7a2f14" stroke="#d9a447" strokeWidth={3} />
-              {/* كارت العلامة */}
-              <rect x={-15} y={-3} width={30} height={11} rx={4} fill="#fbf7f0" />
-              <ellipse cx={-5} cy={2.5} rx={2.4} ry={3.4} fill="#8a3d1a" />
-              <circle cx={3} cy={3.5} r={2.2} fill="#b95d2e" />
-              {/* حبات مطبوعة على جسم العلبة */}
-              <ellipse cx={-16} cy={13.5} rx={2.4} ry={3.4} fill="#541d09" opacity={0.6} />
-              <ellipse cx={-9} cy={13.8} rx={2.4} ry={3.4} fill="#541d09" opacity={0.45} />
-              <ellipse cx={16} cy={13.5} rx={2.4} ry={3.4} fill="#541d09" opacity={0.6} />
-              {/* بريق */}
-              <ellipse cx={-19} cy={-2} rx={2.6} ry={8} fill="#ffffff" opacity={0.15} />
+              <image
+                href="/products/date.png"
+                x={-31}
+                y={-37}
+                width={62}
+                height={74}
+                preserveAspectRatio="xMidYMid meet"
+              />
             </g>
             {/* قنبلة */}
             <g
