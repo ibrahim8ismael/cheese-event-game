@@ -37,7 +37,7 @@ class Sfx {
       if (this.ctx.state === "suspended") void this.ctx.resume();
       fn(this.ctx, this.ctx.currentTime);
     } catch {
-      /* ساكت زي الجبنة */
+      /* ساكت زي التمر */
     }
   }
 
@@ -114,6 +114,47 @@ class Sfx {
       g.gain.setValueAtTime(0.22, t0);
       g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
       osc.connect(g).connect(ctx.destination);
+      osc.start();
+      osc.stop(t0 + dur);
+    });
+  }
+
+  /** فرقعة القنبلة: ضجيج عميق + دقته بتوحر السلة */
+  boom(): void {
+    this.play((ctx, t0) => {
+      const dur = 0.4;
+
+      // رشقة ضجيج عريضة بتنطفئ بسرعة (شرور الفجوة)
+      const buffer = ctx.createBuffer(
+        1,
+        Math.floor(ctx.sampleRate * dur),
+        ctx.sampleRate,
+      );
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 1.6);
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+      const lp = ctx.createBiquadFilter();
+      lp.type = "lowpass";
+      lp.frequency.setValueAtTime(1400, t0);
+      lp.frequency.exponentialRampToValueAtTime(180, t0 + dur);
+      const ng = ctx.createGain();
+      ng.gain.setValueAtTime(0.55, t0);
+      ng.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+      noise.connect(lp).connect(ng).connect(ctx.destination);
+      noise.start();
+
+      // أنين هابط عمقي (بووم)
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(140, t0);
+      osc.frequency.exponentialRampToValueAtTime(38, t0 + dur);
+      const og = ctx.createGain();
+      og.gain.setValueAtTime(0.5, t0);
+      og.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+      osc.connect(og).connect(ctx.destination);
       osc.start();
       osc.stop(t0 + dur);
     });

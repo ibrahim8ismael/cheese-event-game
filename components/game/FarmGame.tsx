@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheeseCourt } from "@/components/game/CheeseCourt";
+import { FarmCourt } from "@/components/game/FarmCourt";
 import { sfx } from "@/lib/sound";
 import {
+  BOMB_PENALTY,
+  CATCH_POINTS,
   DEFAULT_ROUND,
+  MISS_PENALTY,
   verdictForCatch,
   type Verdict,
 } from "@/lib/game";
@@ -78,7 +81,7 @@ interface LeadPayload {
   offerCode: string;
 }
 
-export function CheeseGame() {
+export function FarmGame() {
   const [phase, setPhase] = useState<Phase>("welcome");
   const roundSeconds = DEFAULT_ROUND; // ثابتة: 30 ثانية
   const [score, setScore] = useState(0);
@@ -248,7 +251,7 @@ export function CheeseGame() {
     const used = attemptsFor(digits);
     if (used >= MAX_ATTEMPTS) {
       setLeadErrorField("phone");
-      setLeadError("الرقم ده استخدم محاولتينه خلاص 🧀 كل لاعب له محاولتين بس");
+      setLeadError("الرقم ده استخدم محاولتينه خلاص 🍯 كل لاعب له محاولتين بس");
       return;
     }
 
@@ -266,13 +269,16 @@ export function CheeseGame() {
       <div className="flex items-center justify-between px-5 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="leading-tight">
           <div className="flex items-baseline gap-2">
-            <p className="text-sm font-black text-brand">جبنة السماء 🧀</p>
+            <p className="text-sm font-black text-brand">
+              تحدي هيماز فارم 🍯
+            </p>
             <p className="text-[11px] font-bold text-brand/50">
-              +10 قبض · −5 ضيعة
+              <span dir="ltr">+{CATCH_POINTS}</span> في السلة ·{" "}
+              <span dir="ltr">-{MISS_PENALTY}</span> خارجها
             </p>
           </div>
           <p className="text-[9px] font-bold tracking-wide text-brand/40">
-            من هيما فارم 🧡
+            من هيماز فارم 🧡
           </p>
         </div>
         <button
@@ -297,7 +303,7 @@ export function CheeseGame() {
 
       {/* المسرح — بياخد الطول كله على الموبايل */}
       <div className="relative mx-0 min-h-0 flex-1 overflow-hidden bg-gradient-to-b from-brand to-brand-deep sm:mx-4 sm:mb-4 sm:rounded-3xl">
-        <CheeseCourt
+        <FarmCourt
           running={phase === "running"}
           roundSeconds={roundSeconds}
           score={score}
@@ -310,30 +316,44 @@ export function CheeseGame() {
         {phase === "welcome" ? (
           <div className="absolute inset-0 z-10 flex items-center justify-center overflow-y-auto bg-brand/85 p-4 text-center backdrop-blur-sm sm:p-6">
             <div className="anim-rise my-auto w-full max-w-sm">
-              <p className="mb-2 text-4xl">🧀</p>
+              <p className="mb-2 text-4xl">🍯</p>
               <h2 className="mb-1 text-2xl font-black text-gold">
-                جبنة السماء
+                تحدي هيماز فارم!
               </h2>
-              <p className="mb-4 text-sm font-semibold text-cream/85">
-                إزاي تلعب؟ بسيطة..
+              <p className="mb-4 text-sm font-semibold leading-relaxed text-cream/85">
+                حرك السلة يمين وشمال واجمع أكبر عدد منتجات قبل ما الوقت يخلص!
               </p>
               <div className="mb-5 space-y-2 rounded-2xl bg-cream/10 p-4 text-right text-sm font-bold text-cream/85">
-                <p>🖐️ حرّك السلة بإصبعك — أو بأسهم الكيبورد</p>
                 <p>
-                  🧀 كل جبنة تقبضها = <span className="text-gold">+10</span> نقطة
+                  المنتج في السلة ={" "}
+                  <span className="text-gold" dir="ltr">
+                    +{CATCH_POINTS}
+                  </span>{" "}
+                  نقاط
                 </p>
                 <p>
-                  💔 كل جبنة تقع = <span className="text-rose-200">−5</span>
+                  المنتج خارج السلة ={" "}
+                  <span className="text-rose-200" dir="ltr">
+                    -{MISS_PENALTY}
+                  </span>{" "}
+                  نقاط
                 </p>
-                <p>⏱️ الجولة 30 ثانية — والسرعة بتزيد</p>
-                <p>🔁 عندك محاولتين — آخر نتيجة هي اللي بتتحسب</p>
+                <p>
+                  القنبلة في السلة ={" "}
+                  <span className="text-rose-300" dir="ltr">
+                    -{BOMB_PENALTY}
+                  </span>
+                </p>
               </div>
+              <p className="mb-5 text-[11px] font-bold text-cream/70">
+                ⏱️ الجولة 30 ثانية — 🔁 محاولتين وآخر نتيجة هي اللي بتتحسب
+              </p>
               <button
                 type="button"
                 onClick={() => goTo("signup")}
                 className="w-full rounded-full bg-gold px-9 py-3 text-base font-black text-brand-dark shadow-lg shadow-black/25 transition active:scale-95"
               >
-                فهمت، يلا نلعب
+                فاهم.. يلا بينا!
               </button>
             </div>
           </div>
@@ -553,4 +573,4 @@ export function CheeseGame() {
   );
 }
 
-export default CheeseGame;
+export default FarmGame;
