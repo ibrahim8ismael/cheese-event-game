@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { FarmCourt } from "@/components/game/FarmCourt";
 import { sfx } from "@/lib/sound";
 import {
@@ -492,6 +493,13 @@ export function FarmGame() {
         {phase === "final" && finalVerdict ? (
           <div className="absolute inset-0 z-10 flex flex-col overflow-y-auto bg-brand/85 p-6 py-8 text-center backdrop-blur-sm">
             <div className="anim-rise mx-auto my-auto w-full max-w-sm">
+              <Image
+                src="/himaz-farm-logo.jpeg"
+                alt="شعار هيماز فارم"
+                width={160}
+                height={198}
+                className="mx-auto mb-3 h-24 w-auto rounded-lg"
+              />
               <p className="mb-1 text-2xl font-black text-gold-soft">
                 مبروك!
               </p>
@@ -547,7 +555,7 @@ export function FarmGame() {
                 rel="noopener noreferrer"
                 className="block rounded-full border-2 border-gold-soft/70 py-2.5 text-sm font-black text-gold-soft transition active:scale-95"
               >
-                شوف مكان الحدث 📍
+                استلم هديتك من البوث 📍
               </a>
             </div>
           </div>
