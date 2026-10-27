@@ -21,6 +21,7 @@
 
 const SHEET_NAME = "Leads";
 const SHARED_SECRET = ""; // سيبه فاضي لو مش عايز حماية إضافية
+const TIME_ZONE = "Africa/Cairo"; // التوقيت بتوقيت القاهرة مش GMT
 
 const HEADERS = [
   "التاريخ",
@@ -60,7 +61,8 @@ function doPost(e) {
     ensureHeaders(sheet);
 
     const values = [
-      body.createdAt || new Date().toISOString(),
+      body.createdAt ||
+        Utilities.formatDate(new Date(), TIME_ZONE, "yyyy-MM-dd HH:mm:ss"),
       name,
       phone,
       Math.round(score),

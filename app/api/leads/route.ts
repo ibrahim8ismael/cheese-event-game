@@ -18,6 +18,7 @@ import { createSign } from "node:crypto";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const SHEETS_API = "https://sheets.googleapis.com/v4/spreadsheets";
 const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
+const CAIRO_TZ = "Africa/Cairo";
 const EGYPT_PHONE = /^(010|011|012|015)\d{8}$/;
 
 const WEBHOOK_URL = (process.env.LEADS_WEBHOOK_URL ?? "").trim();
@@ -72,6 +73,25 @@ async function accessToken(): Promise<string> {
 
 function text(value: unknown, maxLength: number): string {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
+}
+
+/** التاريخ والوقت بتوقيت القاهرة (مش UTC/GMT) — بيتعامل مع التوقيت الصيفي */
+function cairoTimestamp(date = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: CAIRO_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+
+  const value = (type: string) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+
+  return `${value("year")}-${value("month")}-${value("day")} ${value("hour")}:${value("minute")}:${value("second")}`;
 }
 
 /** مقارنة الموبايلات من غير الصفر اللي بيتشال لما الشيت يخزنه كرقم */
@@ -163,7 +183,7 @@ export async function POST(request: Request) {
   }
 
   const row = [
-    new Date().toISOString(),
+    cairoTimestamp(),
     name,
     phone,
     Math.round(score),
