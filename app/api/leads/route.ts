@@ -75,24 +75,28 @@ function text(value: unknown, maxLength: number): string {
 }
 
 /**
- * POST على Apps Script Web App — بيحصل 302 من Google،
- * فبنعيد إرسال نفس الـ body يدويًا عشان الـ fetch ميحوّلش الطلب لـ GET.
+ * POST على Apps Script Web App: السكريبت بيتنفّذ فورًا على أول POST،
+ * وبعدها Google بيرد 302 على رابط النتيجة — بنقراه بـ GET،
+ * لأن إعادة إرسال الـ body للرابط ده بترجع 405.
  */
 async function postToWebhook(
   payload: Record<string, unknown>,
 ): Promise<Response> {
-  const init: RequestInit = {
+  const res = await fetch(WEBHOOK_URL, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload),
     redirect: "manual",
     cache: "no-store",
-  };
-  let res = await fetch(WEBHOOK_URL, init);
+  });
   if ([301, 302, 303, 307, 308].includes(res.status)) {
     const location = res.headers.get("location");
     if (location) {
-      res = await fetch(location, { ...init, redirect: "follow" });
+      return fetch(location, {
+        method: "GET",
+        redirect: "follow",
+        cache: "no-store",
+      });
     }
   }
   return res;
