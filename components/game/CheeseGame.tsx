@@ -12,7 +12,24 @@ import { offerForScore, type GameOffer } from "@/lib/offers";
 
 const STORE_URL = "https://himasfarm.com";
 
+const offerLabel = (offer: GameOffer | null): string =>
+  !offer
+    ? "بدون عرض"
+    : offer.kind === "discount"
+      ? `خصم ${offer.percent}%`
+      : `منتج مجاني: ${offer.product}`;
+
 type Phase = "intro" | "countdown" | "running" | "final";
+type SubmitState = "idle" | "sending" | "done" | "error";
+
+interface LeadPayload {
+  name: string;
+  phone: string;
+  score: number;
+  verdict: string;
+  offer: string;
+  offerCode: string;
+}
 
 export function CheeseGame() {
   const [phase, setPhase] = useState<Phase>("intro");
@@ -29,6 +46,14 @@ export function CheeseGame() {
   const [leadPhone, setLeadPhone] = useState("");
   const [leadError, setLeadError] = useState<string | null>(null);
   const [leadErrorField, setLeadErrorField] = useState<"name" | "phone" | null>(null);
+
+  /* إرسال النتيجة لجوجل شيت بعد نهاية الجولة */
+  const [submitState, setSubmitState] = useState<SubmitState>("idle");
+  const [submitStore, setSubmitStore] = useState<"sheet" | "console" | null>(
+    null,
+  );
+  const submitSeqRef = useRef(0);
+  const lastLeadRef = useRef<LeadPayload | null>(null);
 
   const timers = useRef<Array<ReturnType<typeof setTimeout>>>([]);
 
@@ -52,6 +77,10 @@ export function CheeseGame() {
     setFinalVerdict(null);
     setFinalOffer(null);
     setOfferCodeCopied(false);
+    setSubmitState("idle");
+    setSubmitStore(null);
+    submitSeqRef.current += 1; // لو فيه إرسال قديم شغال.. نلاشي نتيجته
+    lastLeadRef.current = null;
     setCount(3);
     setLeadError(null);
     setLeadErrorField(null);
@@ -76,11 +105,51 @@ export function CheeseGame() {
     setMuted(next);
   };
 
+  /** إرسال النتيجة للـ API اللي بيضيفها في جوجل شيت */
+  const postLead = async (payload: LeadPayload) => {
+    const seq = ++submitSeqRef.current;
+    lastLeadRef.current = payload;
+    setSubmitState("sending");
+    try {
+      const res = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as {
+        ok?: boolean;
+        store?: "sheet" | "console";
+      };
+      if (!data.ok) throw new Error("rejected");
+      if (seq !== submitSeqRef.current) return; // جولة أحدث بدأت
+      setSubmitStore(data.store ?? null);
+      setSubmitState("done");
+    } catch {
+      if (seq !== submitSeqRef.current) return;
+      setSubmitState("error");
+    }
+  };
+
+  const retryLead = () => {
+    if (lastLeadRef.current) void postLead(lastLeadRef.current);
+  };
+
   const onEndCourt = (finalScore: number) => {
     setScore(finalScore);
-    setFinalVerdict(verdictForCatch(finalScore, roundSeconds));
-    setFinalOffer(offerForScore(finalScore));
+    const verdict = verdictForCatch(finalScore, roundSeconds);
+    const offer = offerForScore(finalScore);
+    setFinalVerdict(verdict);
+    setFinalOffer(offer);
     goTo("final");
+    void postLead({
+      name: leadName.trim(),
+      phone: leadPhone,
+      score: finalScore,
+      verdict: verdict.title,
+      offer: offerLabel(offer),
+      offerCode: offer?.code ?? "",
+    });
   };
 
   const copyOfferCode = async () => {
@@ -302,6 +371,34 @@ export function CheeseGame() {
                 </div>
               ) : null}
 
+              <div aria-live="polite" className="mb-4 min-h-4 text-xs font-bold">
+                {submitState === "sending" ? (
+                  <p className="text-cream/60">بنسجل نتيجتك.. ⏳</p>
+                ) : null}
+                {submitState === "done" ? (
+                  submitStore === "sheet" ? (
+                    <p className="text-mint">تم تسجيل النتيجة في السجل ✅</p>
+                  ) : (
+                    <p className="text-gold-soft">
+                      وضع الديمو: النتيجة اتسجلت في كونسول السيرفر — الشيت لسه
+                      مش متوصل ⚠️
+                    </p>
+                  )
+                ) : null}
+                {submitState === "error" ? (
+                  <div className="flex flex-wrap items-center justify-center gap-2 text-rose-200">
+                    <p>مقدرناش نسجل النتيجة 😕</p>
+                    <button
+                      type="button"
+                      onClick={retryLead}
+                      className="rounded-full border border-rose-200/60 px-3 py-1 text-[11px] font-black"
+                    >
+                      جرب تاني
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+
               <div className="flex flex-col items-stretch gap-2">
                 <button
                   type="button"
@@ -319,9 +416,6 @@ export function CheeseGame() {
                   زور المتجر 🛒
                 </a>
               </div>
-              <p className="mt-3 text-[11px] font-bold text-cream/50">
-                التسجيل تجريبي والبيانات لم تُرسل خارج الجهاز.
-              </p>
             </div>
           </div>
         ) : null}
