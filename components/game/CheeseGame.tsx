@@ -8,6 +8,7 @@ import {
   verdictForCatch,
   type Verdict,
 } from "@/lib/game";
+import { offerForScore, type GameOffer } from "@/lib/offers";
 
 const STORE_URL = "https://himasfarm.com";
 
@@ -19,6 +20,8 @@ export function CheeseGame() {
   const [score, setScore] = useState(0);
   const [count, setCount] = useState(3);
   const [finalVerdict, setFinalVerdict] = useState<Verdict | null>(null);
+  const [finalOffer, setFinalOffer] = useState<GameOffer | null>(null);
+  const [offerCodeCopied, setOfferCodeCopied] = useState(false);
   const [muted, setMuted] = useState(false);
 
   /* تسجيل البيانات (ديمو UI بس — من غير API) */
@@ -47,6 +50,8 @@ export function CheeseGame() {
     clearTimers();
     setScore(0);
     setFinalVerdict(null);
+    setFinalOffer(null);
+    setOfferCodeCopied(false);
     setCount(3);
     setLeadError(null);
     setLeadErrorField(null);
@@ -74,7 +79,18 @@ export function CheeseGame() {
   const onEndCourt = (finalScore: number) => {
     setScore(finalScore);
     setFinalVerdict(verdictForCatch(finalScore, roundSeconds));
+    setFinalOffer(offerForScore(finalScore));
     goTo("final");
+  };
+
+  const copyOfferCode = async () => {
+    if (!finalOffer?.code) return;
+    try {
+      await navigator.clipboard.writeText(finalOffer.code);
+      setOfferCodeCopied(true);
+    } catch {
+      setOfferCodeCopied(false);
+    }
   };
 
   /** Validate the contact details before the local demo round starts. */
@@ -253,6 +269,38 @@ export function CheeseGame() {
               <p className="mb-5 text-sm font-semibold text-cream/70">
                 {finalVerdict.sub}
               </p>
+
+              {finalOffer ? (
+                <div className="mb-5 rounded-2xl border border-gold/50 bg-cream/10 p-4">
+                  <p className="mb-1 text-xs font-black text-gold-soft">
+                    {finalOffer.kind === "discount"
+                      ? `مبروك! كسبت خصم ${finalOffer.percent}% 🎉`
+                      : "مبروك! كسبت منتج مجاني 🎁"}
+                  </p>
+                  {finalOffer.kind === "free-product" ? (
+                    <p className="text-lg font-black text-cream">
+                      {finalOffer.product}
+                    </p>
+                  ) : null}
+                  {finalOffer.code ? (
+                    <div className="mt-3 flex items-center justify-center gap-2">
+                      <code
+                        dir="ltr"
+                        className="rounded-lg bg-black/20 px-3 py-2 font-black text-gold"
+                      >
+                        {finalOffer.code}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={copyOfferCode}
+                        className="rounded-lg border border-cream/30 px-3 py-2 text-xs font-bold text-cream"
+                      >
+                        {offerCodeCopied ? "اتنسخ" : "انسخ الكود"}
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
 
               <div className="flex flex-col items-stretch gap-2">
                 <button
