@@ -560,6 +560,17 @@ export function FarmGame() {
               >
                 استلم هديتك من البوث 📍
               </a>
+
+              <footer className="mt-4 text-center">
+                <a
+                  href="https://banybiz.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] font-semibold text-cream/60 underline decoration-cream/30 underline-offset-4 transition hover:text-gold-soft hover:decoration-gold-soft focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold"
+                >
+                  تطوير بواسطة فريق باني للأعمال.
+                </a>
+              </footer>
             </div>
           </div>
         ) : null}
