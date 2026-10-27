@@ -297,7 +297,7 @@ export function CheeseGame() {
                 <p>🔟 كل جبنة تقبضها = +10 نقطة</p>
                 <p>💔 كل جبنة تسقط = −5</p>
                 <p>⏱️ 30 ثانية — السرعة والجبن بيزيدوا مع الوقت</p>
-                <p>🎯 عندك محاولتين بس — ركّز!</p>
+                <p>🎯 محاولتين بس — آخر نتيجة هي اللي بتتحسب</p>
               </div>
               <form onSubmit={handleStartSubmit} className="space-y-2 text-right">
                 <label
@@ -452,6 +452,12 @@ export function CheeseGame() {
               </div>
 
               <div className="flex flex-col items-stretch gap-2">
+                {attemptsUsed < MAX_ATTEMPTS ? (
+                  <p className="rounded-lg bg-black/15 px-3 py-2 text-[11px] font-bold leading-relaxed text-gold-soft">
+                    ⚠️ المحاولة التانية هتستبدل نتيجتك الحالية ({score} نقطة) —
+                    حتى لو أقل
+                  </p>
+                ) : null}
                 {attemptsUsed < MAX_ATTEMPTS ? (
                   <button
                     type="button"
