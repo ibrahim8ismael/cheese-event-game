@@ -90,7 +90,7 @@ export function verdictForCatch(score: number, roundSeconds: number): Verdict {
   return {
     tier: "disaster",
     title: "الأرض وبس! 🫠",
-    sub: "الجبنة راحت الأرض.. خد نفس وارح العب تاني",
+    sub: "الجبنة راحت الأرض.. خد نفس وارجع العب تاني",
     tone: "danger",
   };
 }
