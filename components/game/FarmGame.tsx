@@ -521,7 +521,7 @@ export function FarmGame() {
 
               <div className="mb-5 rounded-2xl border border-gold/50 bg-cream/10 p-4">
                 <p className="text-base font-black text-cream">
-                  📲 هنبعت لك كود هديتك على الواتساب فورًا
+                  📲 هنبعت لك هديتك على الواتساب فورًا
                 </p>
                 <p className="mt-2 text-xs font-semibold text-cream/65">
                   على الرقم <bdi dir="ltr">{leadPhone}</bdi>
