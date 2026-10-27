@@ -4,11 +4,13 @@
  * الصف اللي بيتضاف:
  *   التاريخ | الاسم | الموبايل | النقاط | الحكم | العرض | كود العرض
  *
- * الإعداد (server env — مش NEXT_PUBLIC):
- *   GOOGLE_SHEETS_ID, GOOGLE_SHEETS_TAB (افتراضي Leads)
- *   GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY
+ * الإعداد — أي طريقة من الاتنين:
+ *   ١) Apps Script Web App (الأسهل): LEADS_WEBHOOK_URL (+ LEADS_WEBHOOK_SECRET اختياري)
+ *   ٢) Service Account مباشرة على Sheets API:
+ *      GOOGLE_SHEETS_ID, GOOGLE_SHEETS_TAB (افتراضي Leads)
+ *      GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY
  *
- * لو الإعداد ناقص: وضع الديمو — الصف بيتطبع في الكونسول
+ * لو مفيش أي إعداد: وضع الديمو — الصف بيتطبع في الكونسول
  * وبيرجع store:"console" عشان الواجهة توضح إن الشيت لسه مش متوصل.
  */
 import { createSign } from "node:crypto";
@@ -17,6 +19,9 @@ const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const SHEETS_API = "https://sheets.googleapis.com/v4/spreadsheets";
 const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 const EGYPT_PHONE = /^(010|011|012|015)\d{8}$/;
+
+const WEBHOOK_URL = (process.env.LEADS_WEBHOOK_URL ?? "").trim();
+const WEBHOOK_SECRET = (process.env.LEADS_WEBHOOK_SECRET ?? "").trim();
 
 const SHEET_ID = (process.env.GOOGLE_SHEETS_ID ?? "").trim();
 const SHEET_TAB = (process.env.GOOGLE_SHEETS_TAB ?? "").trim() || "Leads";
@@ -69,6 +74,30 @@ function text(value: unknown, maxLength: number): string {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
 
+/**
+ * POST على Apps Script Web App — بيحصل 302 من Google،
+ * فبنعيد إرسال نفس الـ body يدويًا عشان الـ fetch ميحوّلش الطلب لـ GET.
+ */
+async function postToWebhook(
+  payload: Record<string, unknown>,
+): Promise<Response> {
+  const init: RequestInit = {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+    redirect: "manual",
+    cache: "no-store",
+  };
+  let res = await fetch(WEBHOOK_URL, init);
+  if ([301, 302, 303, 307, 308].includes(res.status)) {
+    const location = res.headers.get("location");
+    if (location) {
+      res = await fetch(location, { ...init, redirect: "follow" });
+    }
+  }
+  return res;
+}
+
 export async function POST(request: Request) {
   let body: unknown;
   try {
@@ -107,6 +136,50 @@ export async function POST(request: Request) {
     offer,
     offerCode,
   ];
+
+  /* الطريقة ١: Apps Script Web App */
+  if (WEBHOOK_URL) {
+    try {
+      const res = await postToWebhook({
+        secret: WEBHOOK_SECRET,
+        createdAt: row[0],
+        name,
+        phone,
+        score: Math.round(score),
+        verdict,
+        offer,
+        offerCode,
+      });
+      if (!res.ok) {
+        console.error(
+          "[leads] webhook failed:",
+          res.status,
+          (await res.text()).slice(0, 200),
+        );
+        return Response.json(
+          { ok: false, error: "webhook_error" },
+          { status: 502 },
+        );
+      }
+      const reply = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+      } | null;
+      if (reply && reply.ok === false) {
+        console.error("[leads] webhook rejected:", reply);
+        return Response.json(
+          { ok: false, error: "webhook_rejected" },
+          { status: 502 },
+        );
+      }
+      return Response.json({ ok: true, store: "sheet" });
+    } catch (error) {
+      console.error("[leads] webhook error:", error);
+      return Response.json(
+        { ok: false, error: "webhook_error" },
+        { status: 502 },
+      );
+    }
+  }
 
   /* ديمو قبل ربط الشيت: الصف بيتطبع في الكونسول بدل ما يضيع */
   if (!sheetsReady) {

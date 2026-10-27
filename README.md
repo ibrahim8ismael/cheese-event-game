@@ -34,24 +34,39 @@ npm run build    # فحص إنتاج
 - `components/game/CheeseCourt.tsx` — مشهد السماء: جبنة نازلة + سلة متحركة + شريط وقت (كل الفيزيكس RAF)
 - `components/game/CheeseGame.tsx` — آلة الحالات (البداية/العد/اللعب/النتيجة) والواجهات
 - `app/api/leads/route.ts` — استقبال نتيجة الجولة وإضافتها في جوجل شيت
+- `google-sheets/apps-script.gs` — كود Apps Script جاهز للصق في الشيت
 
 ## ربط جوجل شيت (تسجيل النتائج)
 كل جولة تخلص، الواجهة بتبعت `POST /api/leads` بالاسم والموبايل والنقاط والحكم والعرض وكود العرض، والسيرفر بيضيف صف بالشكل ده:
 
 `التاريخ | الاسم | الموبايل | النقاط | الحكم | العرض | كود العرض`
 
-### الإعداد (مرة واحدة)
-1. اعمل شيت جديد وسمّي التاب `Leads` (أو غيّره من `GOOGLE_SHEETS_TAB`).
-2. في Google Cloud Console: فعّل **Google Sheets API** → أنشئ **Service Account** → نزّل **JSON key**.
-3. شارك الشيت مع إيميل السيرفس (`...iam.gserviceaccount.com`) بصلاحية **Editor**.
-4. حط في `.env.local`:
+السيرفر بيدعم طريقتين — **Apps Script** ليها الأولوية لو `LEADS_WEBHOOK_URL` متظبط:
+
+### الطريقة ١: Apps Script Web App (الأسهل — من غير Google Cloud)
+1. افتح الشيت ← **Extensions ← Apps Script**، والصق كود [`google-sheets/apps-script.gs`](google-sheets/apps-script.gs) كله.
+2. **Deploy ← New deployment ← Web app**: Execute as **Me**، Who has access **Anyone** ← Deploy، وانسخ رابط `/exec`.
+3. في `.env.local`:
+   ```bash
+   LEADS_WEBHOOK_URL=<رابط /exec>
+   LEADS_WEBHOOK_SECRET=<نفس SHARED_SECRET من السكريبت — اختياري>
    ```
+السكريبت بيعمل تاب `Leads` والعناوين لوحده أول مرة.
+
+### الطريقة ٢: Service Account (API مباشر)
+1. في Google Cloud Console: فعّل **Google Sheets API** → أنشئ **Service Account** → نزّل **JSON key**.
+2. شارك الشيت مع إيميل السيرفس (`...iam.gserviceaccount.com`) بصلاحية **Editor**.
+3. حط في `.env.local`:
+   ```bash
    GOOGLE_SHEETS_ID=<آيدي الشيت من الرابط>
    GOOGLE_SHEETS_TAB=Leads
    GOOGLE_SERVICE_ACCOUNT_EMAIL=<client_email>
    GOOGLE_PRIVATE_KEY=<private_key كامل، \n بين السطور>
    ```
-5. لو الإعداد ناقص، السيرفر بيطبع الصف في الكونسول (dry-run) واللعبة بتعرض "وضع الديمو".
+
+### ملاحظات
+- لو مفيش أي إعداد، السيرفر بيطبع الصف في الكونسول (dry-run) واللعبة بتعرض "وضع الديمو".
+- كل جولة = صف جديد، حتى لو نفس اللاعب أعاد.
 
 ## خطوة قادمة (TODO)
 - نشر على Vercel + صورة OG
