@@ -13,7 +13,10 @@ import {
 } from "@/lib/game";
 import { offerForScore, type GameOffer } from "@/lib/offers";
 
-const STORE_URL = "https://himasfarm.com";
+/** لوكيشن الحدث/الفارم — من env عشان تقدر تغيره لكل فعالية */
+const LOCATION_URL = process.env.NEXT_PUBLIC_EVENT_LOCATION_URL
+  ? process.env.NEXT_PUBLIC_EVENT_LOCATION_URL
+  : "https://maps.app.goo.gl/v5X5fTpkRt6mepdd9"; // عنوان هيماز فارم من موقعهم
 const MAX_ATTEMPTS = 2;
 const ATTEMPTS_KEY = "hima_attempts_v1";
 
@@ -553,12 +556,12 @@ export function FarmGame() {
               </div>
 
               <a
-                href={STORE_URL}
+                href={LOCATION_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block rounded-full border-2 border-gold-soft/70 py-2.5 text-sm font-black text-gold-soft transition active:scale-95"
               >
-                زور المتجر 🛒
+                شوف مكان الحدث 📍
               </a>
             </div>
           </div>
