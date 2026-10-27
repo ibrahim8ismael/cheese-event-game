@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { sfx } from "@/lib/sound";
 import {
+  BOMB_CHANCE,
+  BOMB_PENALTY,
   CATCH_POINTS,
   MISS_PENALTY,
   SCORE_FLOOR,
@@ -18,6 +20,11 @@ const MIN_H = 200;
 const CATCH_HALF = 105; // نصف سعة السلة للقبض
 const ENT_MAX = 12;
 const FLOAT_MAX = 6;
+const BOOM_MAX = 4;
+
+/** أنواع اللي بيوصطروا: عسل/تمر + قنبلة */
+type ItemKind = "honey" | "dates" | "bomb";
+const KIND_ORDER: ItemKind[] = ["honey", "dates", "bomb"];
 
 interface CourtGeo {
   H: number;
@@ -40,6 +47,7 @@ function geoFor(H: number): CourtGeo {
 interface Ent {
   active: boolean;
   slot: number;
+  kind: ItemKind;
   x: number;
   y: number;
   vy: number;
@@ -53,6 +61,15 @@ interface Ent {
   settled: boolean;
 }
 
+/** لحظة فجوة القنبلة (حلقة بتكبر وتتلاشى) */
+interface BoomFx {
+  active: boolean;
+  slot: number;
+  x: number;
+  y: number;
+  bornAt: number;
+}
+
 interface FloatLabel {
   active: boolean;
   slot: number;
@@ -63,7 +80,7 @@ interface FloatLabel {
   fill: string;
 }
 
-export interface CheeseCourtProps {
+export interface FarmCourtProps {
   running: boolean;
   roundSeconds: number;
   score: number;
@@ -73,17 +90,17 @@ export interface CheeseCourtProps {
 }
 
 /**
- * مشهد "جبنة السماء": جبنة بتقصط من فوق وسلة بتتبع إصبعك/كيبوردك
+ * مشهد "تحدي هيماز فارم": عسل وتمر (وقنابل!) بتنزل من فوق وسلة بتتبع إصبعك/كيبوردك
  * كل الفيزيكس بيمشي بـ RAF على refs — بدون إعاد render
  */
-export function CheeseCourt({
+export function FarmCourt({
   running,
   roundSeconds,
   score,
   onCatch,
   onMiss,
   onEnd,
-}: CheeseCourtProps) {
+}: FarmCourtProps) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const barRef = useRef<HTMLDivElement | null>(null);
   const timeRef = useRef<HTMLSpanElement | null>(null);
@@ -92,6 +109,11 @@ export function CheeseCourt({
   const cloudARef = useRef<SVGGElement | null>(null);
   const cloudBRef = useRef<SVGGElement | null>(null);
   const entRefs = useRef<Array<SVGGElement | null>>([]);
+  /** رسم كل نوع من المنتجات جوا كل خانة — بنركز اللي بيظهر بالـ visibility */
+  const partRefs = useRef<Array<Array<SVGGElement | null>>>(
+    Array.from({ length: ENT_MAX }, () => [null, null, null]),
+  );
+  const boomRefs = useRef<Array<SVGGElement | null>>([]);
   const floatRefs = useRef<Array<SVGGElement | null>>([]);
   const floatTextRefs = useRef<Array<SVGTextElement | null>>([]);
 
@@ -104,6 +126,7 @@ export function CheeseCourt({
   const scoreRef = useRef(0);
   const streakRef = useRef(0);
   const bounceStartRef = useRef(-Infinity);
+  const shakeStartRef = useRef(-Infinity);
   const bxRef = useRef(STAGE_W / 2);
   const txRef = useRef(STAGE_W / 2);
   const keysRef = useRef<{ l: boolean; r: boolean }>({ l: false, r: false });
@@ -115,6 +138,10 @@ export function CheeseCourt({
   const freeFloatSlotsRef = useRef<number[]>(
     Array.from({ length: FLOAT_MAX }, (_, i) => i),
   );
+  const boomsRef = useRef<BoomFx[]>([]);
+  const freeBoomSlotsRef = useRef<number[]>(
+    Array.from({ length: BOOM_MAX }, (_, i) => i),
+  );
   const runningRef = useRef(running);
 
   /* ارتفاع المسرح الحقيقي — الـ viewBox بيتحرك مع نسبة شاشة الموبايل */
@@ -122,7 +149,7 @@ export function CheeseCourt({
   const vhRef = useRef(DEFAULT_H);
   const geoNow = () => geoFor(vhRef.current);
 
-  /* ─── الالتقاط والضياع ─── */
+  /* ─── الالتقاط والضياع والفجوة ─── */
   const doCatch = (x: number, now: number) => {
     scoreRef.current += CATCH_POINTS;
     streakRef.current += 1;
@@ -132,6 +159,7 @@ export function CheeseCourt({
     spawnFloat(x, geoNow().catchY - 58, `+${CATCH_POINTS}`, "#8ef0b2", now);
   };
 
+  /** المنتج خارج السلة: هارطة الأرض */
   const doMiss = (x: number, now: number) => {
     scoreRef.current = Math.max(
       SCORE_FLOOR,
@@ -147,6 +175,24 @@ export function CheeseCourt({
       "#ff9d9d",
       now,
     );
+  };
+
+  /** القنبلة في السلة: بوم.. خصم من النتيجة (وممية زياده على النتيجة) */
+  const doBomb = (x: number, now: number) => {
+    scoreRef.current = Math.max(SCORE_FLOOR, scoreRef.current - BOMB_PENALTY);
+    streakRef.current = 0;
+    shakeStartRef.current = now;
+    sfx.boom();
+    onMiss(scoreRef.current);
+    spawnFloat(x, geoNow().catchY - 62, `\u2212${BOMB_PENALTY}`, "#ff9d9d", now);
+    spawnBoom(x, geoNow().catchY + 6, now);
+  };
+
+  /** فجوة بترسم حلقة بتكبر وتتلاشى فوق السلة */
+  const spawnBoom = (x: number, y: number, bornAt: number) => {
+    const slot = freeBoomSlotsRef.current.pop();
+    if (slot === undefined) return;
+    boomsRef.current.push({ active: true, slot, x, y, bornAt });
   };
 
   const spawnFloat = (
@@ -173,14 +219,36 @@ export function CheeseCourt({
     });
   };
 
-  const spawnCheese = () => {
+  /** بنركز الشكل الصح جوا الخانة (عسل/تمر/قنبلة) */
+  const setKindVisual = (slot: number, kind: ItemKind) => {
+    const want = KIND_ORDER.indexOf(kind);
+    const parts = partRefs.current[slot] ?? [];
+    const visible = KIND_ORDER.map((_, i) => i === want);
+    parts.forEach((el, i) => {
+      if (!el) return;
+      const next = visible[i] ? "visible" : "hidden";
+      if (el.getAttribute("visibility") !== next) {
+        el.setAttribute("visibility", next);
+      }
+    });
+  };
+
+  const spawnItem = () => {
     const slot = freeSlotsRef.current.pop();
     if (slot === undefined) return;
     const power = difficultyAt(elapsedRef.current, roundSeconds);
     const speedK = geoNow().H / DEFAULT_H; // تطبيع السرعة مع طول الشاشة (الإحساس ثابت)
+    const kind: ItemKind =
+      BOMB_PENALTY > 0 && BOMB_CHANCE > 0 && Math.random() < BOMB_CHANCE
+        ? "bomb"
+        : /* عسل وتمر بيتنازلو بنفس الوزن */
+          Math.random() < 0.5
+          ? "honey"
+          : "dates";
     entsRef.current.push({
       active: true,
       slot,
+      kind,
       x: 90 + Math.random() * 820,
       y: -50,
       vy: fallSpeedAt(power) * (0.9 + Math.random() * 0.25) * speedK,
@@ -192,6 +260,7 @@ export function CheeseCourt({
       scale: 0.85 + Math.random() * 0.3,
       settled: false,
     });
+    setKindVisual(slot, kind);
   };
 
   /* ─── قياس المسرح: الـ viewBox بيمشي على نسبة الشاشة (لعبة بتملى الطول) ─── */
@@ -242,8 +311,15 @@ export function CheeseCourt({
       { length: FLOAT_MAX },
       (_, i) => i,
     );
+    boomsRef.current = [];
+    freeBoomSlotsRef.current = Array.from(
+      { length: BOOM_MAX },
+      (_, i) => i,
+    );
+    shakeStartRef.current = -Infinity;
     entRefs.current.forEach((el) => el?.setAttribute("visibility", "hidden"));
     floatRefs.current.forEach((el) => el?.setAttribute("visibility", "hidden"));
+    boomRefs.current.forEach((el) => el?.setAttribute("visibility", "hidden"));
 
     /* لوحة المفاتيح: أسهم ± للتوجيه */
     const onKeyDown = (e: KeyboardEvent) => {
@@ -274,10 +350,10 @@ export function CheeseCourt({
       const power = difficultyAt(elapsedRef.current, roundSeconds);
       const G = geoNow(); // هندسة اللقطة الحالية (بتتقري كل فريم)
 
-      /* توليد الجبنة بمنحنى يقل فترة مع الوقت */
+      /* توليد المنتجات/القنابل بمنحنى يقل فترته مع الوقت */
       spawnAtRef.current -= dt;
       if (spawnAtRef.current <= 0) {
-        spawnCheese();
+        spawnItem();
         spawnAtRef.current =
           spawnIntervalAt(power) * (0.85 + Math.random() * 0.35);
       }
@@ -294,16 +370,19 @@ export function CheeseCourt({
         (txRef.current - bxRef.current) * Math.min(1, dt * 16);
       bxRef.current = Math.max(130, Math.min(870, bxRef.current));
 
-      /* نملة السلة (bounce) */
+      /* نزة السلة (bounce) + هزة القنبلة */
       const bounceAge = now - bounceStartRef.current;
       const scale =
         bounceAge < 170 ? 1 + 0.17 * (1 - bounceAge / 170) : 1;
+      const shakeAge = now - shakeStartRef.current;
+      const shake =
+        shakeAge < 240 ? Math.sin(shakeAge / 20) * 10 * (1 - shakeAge / 240) : 0;
       basketRef.current?.setAttribute(
         "transform",
-        `translate(${bxRef.current} ${G.basketY}) scale(${scale})`,
+        `translate(${bxRef.current + shake} ${G.basketY}) scale(${scale})`,
       );
 
-      /* تحديث الجبنة */
+      /* تحديث المنتجات */
       const remaining = Math.max(0, roundSeconds - elapsedRef.current);
       for (const e of entsRef.current) {
         if (!e.active) continue;
@@ -324,6 +403,8 @@ export function CheeseCourt({
             g.setAttribute("visibility", "visible");
         }
 
+        const isBomb = e.kind === "bomb";
+
         /* خط الالتقاط */
         if (
           !e.settled &&
@@ -333,7 +414,8 @@ export function CheeseCourt({
         ) {
           e.active = false;
           e.settled = true;
-          doCatch(swayX, now);
+          if (isBomb) doBomb(swayX, now);
+          else doCatch(swayX, now);
           if (g) g.setAttribute("visibility", "hidden");
           freeSlotsRef.current.push(e.slot);
           continue;
@@ -343,13 +425,14 @@ export function CheeseCourt({
         if (e.y > G.floorY) {
           e.active = false;
           if (!e.settled) e.settled = true;
-          doMiss(swayX, now);
+          /* القنبلة على الأرض = مفيش خصم (الضرر بس لو في السلة) */
+          if (!isBomb) doMiss(swayX, now);
           if (g) g.setAttribute("visibility", "hidden");
           freeSlotsRef.current.push(e.slot);
         }
       }
 
-      /* الجملة المعومين (+10 / −5) */
+      /* الجملة المعومين (+10 / −5 / −20) */
       for (const f of floatsRef.current) {
         if (!f.active) continue;
         const age = (now - f.bornAt) / 1000;
@@ -367,6 +450,29 @@ export function CheeseCourt({
             `translate(${f.x} ${f.y - age * 70})`,
           );
           el.setAttribute("opacity", String(Math.max(0, 1 - age / 0.8)));
+          if (el.getAttribute("visibility") !== "visible")
+            el.setAttribute("visibility", "visible");
+        }
+      }
+
+      /* فجوة القنبلة: حلقة بتكبر وتختفي */
+      for (const b of boomsRef.current) {
+        if (!b.active) continue;
+        const age = (now - b.bornAt) / 1000;
+        if (age >= 0.45) {
+          b.active = false;
+          const el = boomRefs.current[b.slot];
+          if (el) el.setAttribute("visibility", "hidden");
+          freeBoomSlotsRef.current.push(b.slot);
+          continue;
+        }
+        const el = boomRefs.current[b.slot];
+        if (el) {
+          el.setAttribute(
+            "transform",
+            `translate(${b.x} ${b.y}) scale(${1 + age * 6})`,
+          );
+          el.setAttribute("opacity", String(Math.max(0, 1 - age / 0.45)));
           if (el.getAttribute("visibility") !== "visible")
             el.setAttribute("visibility", "visible");
         }
@@ -439,6 +545,7 @@ export function CheeseCourt({
     >
       <svg
         viewBox={`0 0 ${STAGE_W} ${G.H}`}
+        direction="ltr"
         className="absolute inset-0 h-full w-full"
         aria-hidden="true"
       >
@@ -454,7 +561,7 @@ export function CheeseCourt({
           <ellipse cx={-80} cy={16} rx={65} ry={20} fill="#fbf7f0" />
         </g>
 
-        {/* الجبنة النازلة (حمّام ثابت لحد 12 حتة) */}
+        {/* المنتجات والقنابل النازلة (حمّام ثابت لحد 12 حتة) */}
         {Array.from({ length: ENT_MAX }, (_, i) => (
           <g
             key={i}
@@ -463,27 +570,43 @@ export function CheeseCourt({
             }}
             visibility="hidden"
           >
-            <rect
-              x={-26}
-              y={-20}
-              width={52}
-              height={40}
-              rx={9}
-              fill="#f8d165"
-              stroke="#d89a2b"
-              strokeWidth={3}
-            />
-            <rect
-              x={-26}
-              y={-20}
-              width={52}
-              height={9}
-              rx={4.5}
-              fill="#d89a2b"
-            />
-            <circle cx={-9} cy={2} r={5} fill="#d89a2b" />
-            <circle cx={11} cy={11} r={4} fill="#b7862b" />
-            <circle cx={7} cy={-6} r={3} fill="#e2b04e" />
+            {/* برطمان عسل */}
+            <g
+              ref={(el) => {
+                partRefs.current[i][0] = el;
+              }}
+            >
+              <rect x={-19} y={-26} width={38} height={13} rx={6} fill="#7a5314" stroke="#5f3c0e" strokeWidth={2} />
+              <rect x={-24} y={-14} width={48} height={38} rx={11} fill="#e8a33d" stroke="#c07f22" strokeWidth={3} />
+              <circle cx={-14} cy={-5} r={3.5} fill="#fff4d6" opacity={0.8} />
+              <rect x={-13} y={1} width={26} height={13} rx={4} fill="#fbf7f0" opacity={0.9} />
+              <circle cx={0} cy={10} r={4} fill="#c07f22" />
+            </g>
+            {/* علبة تمر */}
+            <g
+              ref={(el) => {
+                partRefs.current[i][1] = el;
+              }}
+              visibility="hidden"
+            >
+              <rect x={-25} y={-18} width={50} height={37} rx={10} fill="#8a3b1e" stroke="#5f2712" strokeWidth={3} />
+              <ellipse cx={-9} cy={-5} rx={4.5} ry={6} fill="#c98a4b" />
+              <ellipse cx={9} cy={-7} rx={4.5} ry={6} fill="#b8793c" />
+              <ellipse cx={0} cy={-10} rx={4.5} ry={6} fill="#d29a55" />
+              <rect x={-27} y={2} width={54} height={9} rx={4.5} fill="#fbf7f0" opacity={0.9} />
+            </g>
+            {/* قنبلة */}
+            <g
+              ref={(el) => {
+                partRefs.current[i][2] = el;
+              }}
+              visibility="hidden"
+            >
+              <path d="M4,-8 q5,-13 15,-12" fill="none" stroke="#a96f26" strokeWidth={4} strokeLinecap="round" />
+              <circle cx={20} cy={-20} r={4} fill="#ffd166" />
+              <circle cx={0} cy={7} r={17} fill="#2f2f38" stroke="#15151b" strokeWidth={3} />
+              <circle cx={-6} cy={1} r={5.5} fill="#5b5b69" opacity={0.9} />
+            </g>
           </g>
         ))}
 
@@ -525,6 +648,21 @@ export function CheeseCourt({
           fill="#123b2a"
           opacity={0.55}
         />
+
+        {/* حلقات فجوة القنبلة */}
+        {Array.from({ length: BOOM_MAX }, (_, i) => (
+          <g
+            key={i}
+            ref={(el) => {
+              boomRefs.current[i] = el;
+            }}
+            visibility="hidden"
+            opacity={0}
+          >
+            <circle r={13} fill="#ff8a5b" opacity={0.5} />
+            <circle r={21} fill="none" stroke="#ffd166" strokeWidth={5} />
+          </g>
+        ))}
 
         {/* الرسائل المعومين (+10 / −5) */}
         {Array.from({ length: FLOAT_MAX }, (_, i) => (
@@ -568,4 +706,4 @@ export function CheeseCourt({
   );
 }
 
-export default CheeseCourt;
+export default FarmCourt;

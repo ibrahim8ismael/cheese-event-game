@@ -1,7 +1,7 @@
 /**
  * ─────────────────────────────────────────────────────────────
  * محرك اللعبة (منطق نقي بدون React)
- * هيما فارم · himasfarm.com
+ * هيماز فارم · himasfarm.com
  * ─────────────────────────────────────────────────────────────
  */
 
@@ -25,15 +25,32 @@ export interface Verdict {
 }
 
 /* ═════════════════════════════════════════════════════════════
-   محرك "جبنة السماء" — التقاط الجبنة اللي بتنزل
-   (جبنة بتنزل من السماء وسلة بأيدك.. اجمع قبل ما الوقت يخلص)
+   محرك "تحدي هيماز فارم" — جمع منتجات السماء (عسل وتمر)
+   (منتج بتنزل من السماء وسلة بأيدك.. اجمع قبل ما الوقت يخلص)
    ═════════════════════════════════════════════════════════════ */
 
-/** نقاط الجبنة النهضيدة */
+/** نقاط المنتج اللي بيدخل السلة */
 export const CATCH_POINTS = 10;
 
-/** خصم الجبنة اللي هارطة الأرض */
+/** خصم المنتج اللي هارطة الأرض خارج السلة */
 export const MISS_PENALTY = 5;
+
+/** خصم القنبلة اللي بتدخل السلة — قيمة من env عشان تتزبط من غير نشر جديد */
+const envNumber = (raw: string | undefined, fallback: number): number => {
+  if (!raw?.trim()) return fallback;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+};
+
+export const BOMB_PENALTY = Math.max(1, Math.round(
+  envNumber(process.env.NEXT_PUBLIC_BOMB_PENALTY, 20),
+));
+
+/** احتمال ظهور القنبلة — بالنسبة المئوية (15 = 15%) */
+export const BOMB_CHANCE = Math.max(
+  0,
+  Math.min(90, envNumber(process.env.NEXT_PUBLIC_BOMB_CHANCE, 15)),
+) / 100;
 
 /** أقل درجة مسموحة (مفيش درجات سلبية.. قلبنا طيب) */
 export const SCORE_FLOOR = 0;
@@ -46,12 +63,12 @@ export function difficultyAt(elapsedSec: number, roundSeconds: number): number {
   return Math.max(0, Math.min(1, elapsedSec / roundSeconds));
 }
 
-/** سرعة نزول الجبنة (وحدة viewBox/ثانية): سريعة من البداية وتشتد مع الوقت */
+/** سرعة نزول المنتجات (وحدة viewBox/ثانية): سريعة من البداية وتشتد مع الوقت */
 export function fallSpeedAt(power: number): number {
   return 450 + 450 * power; // 450 → 900
 }
 
-/** الفترة بين قطع الجبن: بداية أكثف وتوصل لحوالي 5 قطع في الثانية */
+/** الفترة بين النزول: بداية أكثف وتوصل لحوالي 5 منتجات في الثانية */
 export function spawnIntervalAt(power: number): number {
   return Math.max(0.18, 0.65 - 0.47 * power); // 0.65 → 0.18
 }
@@ -62,22 +79,22 @@ export function verdictForCatch(score: number, roundSeconds: number): Verdict {
   if (s >= 240)
     return {
       tier: "perfect",
-      title: "أسطورة منقطة! 👑",
-      sub: "سلتك بقت محطة استقبال للجبن.. كلها طايرة على مودك",
+      title: "أسطورة في السوق! 👑",
+      sub: "سلتك بقت محطة وصول للعسل والتمر.. كلهم طايبين على مودك",
       tone: "gold",
     };
   if (s >= 180)
     return {
       tier: "great",
-      title: "شيف تقسيم معلن 💪",
-      sub: "سلتك امتلأت جبن محترم.. حد مغير مكانها!",
+      title: "تاجر محترف 💪",
+      sub: "سلتك امتلأت منتجات محترمة.. حد مش هيوصلها!",
       tone: "green",
     };
   if (s >= 125)
     return {
       tier: "good",
       title: "يدك ذهب 🙌",
-      sub: "قبض جميل.. فيه كام حتة وقعت على الأرصفة بس",
+      sub: "جمع جميل.. فيه كام منتج وقع على الأرض بس",
       tone: "green",
     };
   if (s >= 55)
@@ -90,7 +107,7 @@ export function verdictForCatch(score: number, roundSeconds: number): Verdict {
   return {
     tier: "disaster",
     title: "الأرض وبس! 🫠",
-    sub: "الجبنة راحت الأرض.. خد نفس وارجع العب تاني",
+    sub: "المنتجات راحت الأرض.. خد نفس وارجع العب تاني",
     tone: "danger",
   };
 }
