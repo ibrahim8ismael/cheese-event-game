@@ -87,6 +87,7 @@ interface LeadPayload {
 
 export function FarmGame() {
   const [phase, setPhase] = useState<Phase>("welcome");
+  const [courtRunId, setCourtRunId] = useState(0);
   const roundSeconds = DEFAULT_ROUND; // ثابتة: 30 ثانية
   const [score, setScore] = useState(0);
   const [count, setCount] = useState(3);
@@ -128,6 +129,7 @@ export function FarmGame() {
   const startGame = () => {
     sfx.ensure();
     clearTimers();
+    setCourtRunId((runId) => runId + 1);
     setScore(0);
     setFinalVerdict(null);
     setSubmitState("idle");
@@ -305,6 +307,7 @@ export function FarmGame() {
       {/* المسرح — بياخد الطول كله على الموبايل */}
       <div className="relative mx-0 min-h-0 flex-1 overflow-hidden bg-gradient-to-b from-brand to-brand-deep sm:mx-4 sm:mb-4 sm:rounded-3xl">
         <FarmCourt
+          key={courtRunId}
           running={phase === "running"}
           roundSeconds={roundSeconds}
           score={score}
