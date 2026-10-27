@@ -11,6 +11,47 @@ import {
 import { offerForScore, type GameOffer } from "@/lib/offers";
 
 const STORE_URL = "https://himasfarm.com";
+const MAX_ATTEMPTS = 2;
+const ATTEMPTS_KEY = "hima_attempts_v1";
+
+type AttemptMap = Record<string, number>;
+let memoryAttempts: AttemptMap = {};
+
+/** محاولات اللاعب — localStorage مع fallback للذاكرة لو المتصفح مانع التخزين */
+function readAttempts(): AttemptMap {
+  const map: AttemptMap = { ...memoryAttempts };
+  if (typeof window === "undefined") return map;
+  try {
+    const raw = window.localStorage.getItem(ATTEMPTS_KEY);
+    if (!raw) return map;
+    const stored = JSON.parse(raw) as AttemptMap;
+    for (const [phone, count] of Object.entries(stored)) {
+      map[phone] = Math.max(map[phone] ?? 0, Number(count) || 0);
+    }
+  } catch {
+    /* localStorage مش متاح — بنكمل بالذاكرة */
+  }
+  return map;
+}
+
+function attemptsFor(phone: string): number {
+  return readAttempts()[phone] ?? 0;
+}
+
+function recordAttempt(phone: string): number {
+  const map = readAttempts();
+  const next = (map[phone] ?? 0) + 1;
+  map[phone] = next;
+  memoryAttempts = map;
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.setItem(ATTEMPTS_KEY, JSON.stringify(map));
+    } catch {
+      /* بنكمل بالذاكرة */
+    }
+  }
+  return next;
+}
 
 const offerLabel = (offer: GameOffer | null): string =>
   !offer
@@ -40,6 +81,7 @@ export function CheeseGame() {
   const [finalOffer, setFinalOffer] = useState<GameOffer | null>(null);
   const [offerCodeCopied, setOfferCodeCopied] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [attemptsUsed, setAttemptsUsed] = useState(0);
 
   /* تسجيل البيانات (ديمو UI بس — من غير API) */
   const [leadName, setLeadName] = useState("");
@@ -141,6 +183,7 @@ export function CheeseGame() {
     const offer = offerForScore(finalScore);
     setFinalVerdict(verdict);
     setFinalOffer(offer);
+    setAttemptsUsed(recordAttempt(leadPhone));
     goTo("final");
     void postLead({
       name: leadName.trim(),
@@ -178,8 +221,16 @@ export function CheeseGame() {
       return;
     }
 
+    const used = attemptsFor(digits);
+    if (used >= MAX_ATTEMPTS) {
+      setLeadErrorField("phone");
+      setLeadError("الرقم ده استخدم محاولتينه خلاص 🧀 كل لاعب له محاولتين بس");
+      return;
+    }
+
     setLeadName(leadName.trim());
     setLeadPhone(digits);
+    setAttemptsUsed(used);
     setLeadError(null);
     setLeadErrorField(null);
     startGame();
@@ -243,9 +294,10 @@ export function CheeseGame() {
                 حرّك السلة بسرعة واقبض الجبن قبل ما تقع!
               </p>
               <div className="mb-4 space-y-1 text-xs font-bold text-cream/75">
-                <p>🔟 كل جبنة تقدرها = +10 نقطة</p>
-                <p>💔 كل جبنة تسقط الترض = −5</p>
+                <p>🔟 كل جبنة تقبضها = +10 نقطة</p>
+                <p>💔 كل جبنة تسقط = −5</p>
                 <p>⏱️ 30 ثانية — السرعة والجبن بيزيدوا مع الوقت</p>
+                <p>🎯 عندك محاولتين بس — ركّز!</p>
               </div>
               <form onSubmit={handleStartSubmit} className="space-y-2 text-right">
                 <label
@@ -327,7 +379,7 @@ export function CheeseGame() {
           <div className="absolute inset-0 z-10 flex flex-col overflow-y-auto bg-brand/85 p-6 py-8 text-center backdrop-blur-sm">
             <div className="anim-rise mx-auto my-auto w-full max-w-sm">
               <p className="mb-1 text-sm font-bold text-gold-soft">
-                نتيجتك يا {leadName}
+                نتيجتك يا {leadName} · محاولة {attemptsUsed} من {MAX_ATTEMPTS}
               </p>
               <p className="mb-2 text-6xl font-black tabular-nums text-gold">
                 {score}
@@ -400,13 +452,19 @@ export function CheeseGame() {
               </div>
 
               <div className="flex flex-col items-stretch gap-2">
-                <button
-                  type="button"
-                  onClick={startGame}
-                  className="rounded-full border-2 border-cream/25 py-2.5 text-sm font-black text-cream transition active:scale-95"
-                >
-                  العب تاني
-                </button>
+                {attemptsUsed < MAX_ATTEMPTS ? (
+                  <button
+                    type="button"
+                    onClick={startGame}
+                    className="rounded-full border-2 border-cream/25 py-2.5 text-sm font-black text-cream transition active:scale-95"
+                  >
+                    العب تاني — محاولة {attemptsUsed + 1} من {MAX_ATTEMPTS}
+                  </button>
+                ) : (
+                  <p className="rounded-full border-2 border-cream/15 py-2.5 text-sm font-black text-cream/60">
+                    🧀 خلصت محاولتينك — بالتوفيق!
+                  </p>
+                )}
                 <a
                   href={STORE_URL}
                   target="_blank"
